@@ -1,0 +1,11 @@
+<!-- https://material.io/resources/color/#!/?view.left=0&view.right=0&primary.color=283593&secondary.color=FFB74D-->
+<resources>
+<color name="primaryColor">#b71c1c</color>
+<color name="primaryLightColor">#f05545</color>
+<color name="primaryDarkColor">#7f0000</color>
+<color name="secondaryColor">#3e2723</color>
+<color name="secondaryLightColor">#6a4f4b</color>
+<color name="secondaryDarkColor">#1b0000</color>
+<color name="primaryTextColor">#000000</color>
+<color name="secondaryTextColor">#ffffff</color>
+</resources>
