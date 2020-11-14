@@ -43,32 +43,37 @@ public class Controller {
         this.mainact = mainact;
         this.data = new ConfigHandler();
         this.activityFile = new ActivityFileHandler(mainact.getApplicationContext());
+
         if (data.configExists(mainact.getApplicationContext())) {
-            // load config
-            try {
-                this.actAssist = data.loadActAssistFromFile(mainact.getApplicationContext(), this);
-            } catch (JSONException e) {
-                Toast.makeText(mainact, "couldn't load server config to file", Toast.LENGTH_SHORT).show();
-                e.printStackTrace();
-            } catch (IOException | ClassNotFoundException e) {
-                Toast.makeText(mainact, "couldn't load server config to file", Toast.LENGTH_SHORT).show();
-                e.printStackTrace();
-            }
-            mainact.setServerStatus(SERVER_STATUS_OFFLINE);
-            mainact.setDeviceStatus(DEVICE_STATUS_REGISTERED);
-            this.deviceState = DEVICE_STATUS_REGISTERED;
+            loadFromConfig();
         } else {
-            // set inital values
-            this.actAssist = null;
-            mainact.setServerStatus(SERVER_STATUS_UNCONFIGURED);
-            mainact.setDeviceStatus(DEVICE_STATUS_UNCONFIGURED);
-            this.deviceState = DEVICE_STATUS_UNCONFIGURED;
-            mainact.setSwitchLogging(false);
-            mainact.resetSpinnerLists();
+            resetConfig();
         }
-        // DEBUG SET
-        boolean tmp = this.activityFile.deleteActivityFile(mainact.getApplicationContext());
-        boolean tmp2 = activityFile.isFirstWrite(mainact.getApplicationContext());
+    }
+
+//__Methods__---------------------------------------------------------------------------------------
+    private void loadFromConfig(){
+         try {
+            this.actAssist = data.loadActAssistFromFile(mainact.getApplicationContext(), this);
+        } catch (JSONException e) {
+            Toast.makeText(mainact, "couldn't load server config to file", Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
+        } catch (IOException | ClassNotFoundException e) {
+            Toast.makeText(mainact, "couldn't load server config to file", Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
+        }
+        mainact.setServerStatus(SERVER_STATUS_OFFLINE);
+        mainact.setDeviceStatus(DEVICE_STATUS_REGISTERED);
+        this.deviceState = DEVICE_STATUS_REGISTERED;
+    }
+
+    private void resetConfig(){
+        this.actAssist = null;
+        mainact.setServerStatus(SERVER_STATUS_UNCONFIGURED);
+        mainact.setDeviceStatus(DEVICE_STATUS_UNCONFIGURED);
+        this.deviceState = DEVICE_STATUS_UNCONFIGURED;
+        mainact.setSwitchLogging(false);
+        mainact.resetSpinnerLists();
     }
 
 //__GETTER/SETTER__---------------------------------------------------------------------------------
@@ -103,6 +108,18 @@ public class Controller {
     }
 
 //__GUI Callbacks__---------------------------------------------------------------------------------
+    public void onCreate(){
+        // executed when main activity starts
+        mainact.resetSpinnerLists();
+        // START DEBUG
+        // code to manually delete config file
+        //File dir = getFilesDir();
+        //File file = new File(dir, CONNECTION_FILE_NAME);
+        //boolean deleted = file.delete();
+        //System.exit(0);
+        // END DEBUG
+    }
+
     public void switchLoggingToggled(boolean turnedOn){
         /** log activity to file if an experiment is conducted
          *
@@ -222,8 +239,17 @@ public class Controller {
          * */
         if (this.deviceState.equals(DEVICE_STATUS_REGISTERED)){
             // todo make a ping request
-            this.actAssist.getSmartphoneAPI();
-            this.actAssist.getActivitiesAPI();
+            actAssist.getSmartphoneAPI();
+            actAssist.getActivitiesAPI();
+            try {
+                // TODO do this when the activities where received from server
+                data.dumpActAssistToFile(
+                        mainact.getApplicationContext(),
+                        actAssist);
+            }catch (Exception e){
+                // TODO do sth if this fails
+
+            }
         }
     }
 }

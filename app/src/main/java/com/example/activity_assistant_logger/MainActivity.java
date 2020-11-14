@@ -1,5 +1,8 @@
 package com.example.activity_assistant_logger;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -39,11 +42,11 @@ public class MainActivity extends AppCompatActivity implements MySpinner.OnItemS
     MySpinner mySpinner_activity;
     private Switch switch_logging;
     private String device_status;
+    private String CHANNEL_ID = "0";
     private String server_status;
     private Runnable runnable_check_server_status;
-    private NotificationManagerCompat notificationManager;
     private static final int PERMISSION_REQUEST_CODE=200;
-    public static final String SPINNER_INITIAL_VAL="unconfigured";
+    public static final String SPINNER_INITIAL_VAL = "unconfigured";
     private Controller controller;
 
     @Override
@@ -51,7 +54,7 @@ public class MainActivity extends AppCompatActivity implements MySpinner.OnItemS
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
-        //setSupportActionBar(toolbar);
+        setSupportActionBar(toolbar);
 
         qrcode_scan = findViewById(R.id.btn_scan_qrcode);
         qrcode_text = findViewById(R.id.textView_qrcode);
@@ -60,34 +63,20 @@ public class MainActivity extends AppCompatActivity implements MySpinner.OnItemS
 
         switch_logging = findViewById(R.id.switch_logging);
         mySpinner_activity = findViewById(R.id.spinner_activity);
-        resetSpinnerLists();
         mySpinner_activity.setOnItemSelectedListener(this);
 
-        // START DEBUG
-        // code to manually delete config file
-        //File dir = getFilesDir();
-        //File file = new File(dir, CONNECTION_FILE_NAME);
-        //boolean deleted = file.delete();
-        //System.exit(0);
-        // END DEBUG
+        createNotificationChannel();
         this.requestPermissions();
-        this.controller = new Controller(MainActivity.this);
+        controller = new Controller(MainActivity.this);
+        controller.onCreate();
     }
 
     private void requestPermissions(){
         if(ActivityCompat.checkSelfPermission(MainActivity.this, INTERNET)
                 != PackageManager.PERMISSION_GRANTED){
-            System.out.println("------------");
-            System.out.println("went here0");
-            System.out.println("------------");
             ActivityCompat.requestPermissions(MainActivity.this,
                     new String[]{INTERNET},
                     PERMISSION_REQUEST_CODE);
-        }
-        else{
-            System.out.println("------------");
-            System.out.println("went here01");
-            System.out.println("------------");
         }
 
         ActivityCompat.requestPermissions(MainActivity.this,
@@ -97,28 +86,41 @@ public class MainActivity extends AppCompatActivity implements MySpinner.OnItemS
 
 //__Notification__----------------------------------------------------------------------------------
     public void createNotification(){
-        // define notification
-        String temp_text = getSelectedActivity() + " are currently logged to API";
-        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this)
-                .setContentTitle("Activity-assistant Logger")
-                .setContentText(temp_text)
-                .setOngoing(true)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
-                //.setSmallIcon(R.drawable.ic_brain)
-
         // define click behaviour
         Intent intent = new Intent(this, MainActivity.class);
         PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
                 intent, PendingIntent.FLAG_IMMUTABLE);
-        mBuilder.setContentIntent(contentIntent);
+
+        // define notification
+        String temp_text = getSelectedActivity() + getString(R.string.notification_text);
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_baseline_account_circle_24)
+                .setContentTitle(getString(R.string.notification_title))
+                .setContentText(temp_text)
+                .setOngoing(true)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentIntent(contentIntent);
 
         // publish notification
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
         notificationManager = NotificationManagerCompat.from(this);
-        notificationManager.notify(0,mBuilder.build());
+        notificationManager.notify(0,builder.build());
+    }
+
+    public void createNotificationChannel(){
+        // create notificationchannel
+        CharSequence name = getString(R.string.channel_name);
+        String desc = getString(R.string.channel_description);
+        int importance = NotificationManager.IMPORTANCE_DEFAULT;
+        NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+        channel.setDescription(desc);
+        NotificationManager notificationManager = getSystemService(NotificationManager.class);
+        notificationManager.createNotificationChannel(channel);
     }
 
     public void removeNotification(){
         try {
+            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
             notificationManager.cancel(0);
         }
         catch (Exception e){ }
@@ -174,8 +176,8 @@ public class MainActivity extends AppCompatActivity implements MySpinner.OnItemS
     public boolean getSwitchChecked(){
         return switch_logging.isChecked();
     }
+
 //__Spinner__--------------------------------------------------------------------------------------
-//
     public void reloadSpinners(){
         setReloadSpinnerActivity(mySpinner_activity.getItemList());
     }
@@ -217,6 +219,7 @@ public class MainActivity extends AppCompatActivity implements MySpinner.OnItemS
     public void btnShowActFileView(View view){
         controller.onBtnShowActFileView();
     }
+
     public void btnSynchronize(View view){
         controller.onBtnSynchronize();
     }

@@ -25,6 +25,7 @@ public class ActivityFileHandler {
     final private String DATE_FORMAT="dd-MM-yyy HH:mm:ss";
     final private SimpleDateFormat dataFormat;
     private boolean isFirstWrite;
+
     public ActivityFileHandler(Context appContext){
         this.dataFormat = new SimpleDateFormat(DATE_FORMAT, Locale.US);
         this.isFirstWrite = isFirstWrite(appContext);
@@ -35,6 +36,7 @@ public class ActivityFileHandler {
                 Calendar.getInstance().getTime()
         );
     }
+
     public boolean isFirstWrite(Context appContext){
         File file = new File(ACTIVITY_FILE_NAME);
         return !file.exists();
@@ -62,9 +64,6 @@ public class ActivityFileHandler {
     public void setActivityFile(Context appContext, StringBuffer sbf) throws IOException {
     }
 
-    //public File getActivityFile(){
-    //    return new File();
-    //}
     public boolean deleteActivityFile(Context appContext){
         return appContext.deleteFile(ACTIVITY_FILE_NAME);
     }

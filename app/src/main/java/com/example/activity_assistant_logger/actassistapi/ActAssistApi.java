@@ -11,10 +11,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.example.activity_assistant_logger.Controller;
+
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.annotations.NonNull;
+import io.reactivex.rxjava3.core.Scheduler;
+import io.reactivex.rxjava3.core.Single;
+import io.reactivex.rxjava3.core.SingleObserver;
+import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 import retrofit2.Retrofit;
+import retrofit2.adapter.rxjava3.RxJava3CallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class ActAssistApi implements Serializable {
@@ -53,8 +62,8 @@ public class ActAssistApi implements Serializable {
         this.retrofit = new Retrofit.Builder()
                 .baseUrl(url_api)
                 .addConverterFactory(GsonConverterFactory.create())
+                .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
                 .build();
-                //.addCallAdapterFactory(RxJava2CallAdapterFactory.create())
 
         // DEBUG START
         this.experimentRunning = EXP_RUNNING;
@@ -64,8 +73,8 @@ public class ActAssistApi implements Serializable {
          this.retrofit = new Retrofit.Builder()
                 .baseUrl(url_api)
                 .addConverterFactory(GsonConverterFactory.create())
+                .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
                 .build();
-                //.addCallAdapterFactory(RxJava2CallAdapterFactory.create())
     }
     public void setController(Controller con){
         this.controller = con;
@@ -133,20 +142,26 @@ public class ActAssistApi implements Serializable {
         ApiService apiService = retrofit.create(ApiService.class);
 
         // make a request by calling the corresponding method
-        Call<Smartphone> call = apiService.getSmartphone(this.smartphone_id);
-        call.enqueue(new Callback<Smartphone>() {
-            @Override
-            public void onResponse(Call<Smartphone> call, Response<Smartphone> response) {
-                smartphone = response.body();
-                controller.onSuccess("GET smartphone success");
-            }
+         apiService.getSmartphone(this.smartphone_id)
+        .subscribeOn(Schedulers.io())
+        .observeOn(AndroidSchedulers.mainThread())
+        .subscribe(new SingleObserver<Smartphone>() {
+                   @Override
+                   public void onSubscribe(@NonNull Disposable d) {
+                        //compositeDisposable.add(d);
+                   }
 
-            @Override
-            public void onFailure(Call<Smartphone> call, Throwable throwable) {
-                controller.onFailure("GET smartphone failed");
-            }
-        });
+                   @Override
+                   public void onSuccess(@NonNull Smartphone sm) {
+                        smartphone = sm;
+                        controller.onSuccess("GET smartphone success");
+                   }
 
+                   @Override
+                   public void onError(@NonNull Throwable e) {
+                       controller.onFailure("GET smartphone failed");
+                   }
+               });
     }
 
     public void putSmartphoneAPI() {
@@ -154,18 +169,25 @@ public class ActAssistApi implements Serializable {
         ApiService apiService = retrofit.create(ApiService.class);
 
         // make a request by calling the corresponding method
-        Call<Smartphone> call = apiService.putSmartphone(this.smartphone_id, this.smartphone);
-        call.enqueue(new Callback<Smartphone>() {
-            @Override
-            public void onResponse(Call<Smartphone> call, Response<Smartphone> response) {
-                controller.onSuccess("successfully put smartphone");
-            }
+        apiService.putSmartphone(this.smartphone_id, this.smartphone)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new SingleObserver<Smartphone>() {
+                           @Override
+                           public void onSubscribe(@NonNull Disposable d) {
+                                //compositeDisposable.add(d);
+                           }
 
-            @Override
-            public void onFailure(Call<Smartphone> call, Throwable throwable) {
-                controller.onFailure("PUT smartphone failed");
-            }
-        });
+                           @Override
+                           public void onSuccess(@NonNull Smartphone sm) {
+                               controller.onSuccess("successfully put smartphone");
+                           }
+
+                           @Override
+                           public void onError(@NonNull Throwable e) {
+                               controller.onFailure("PUT smartphone failed");
+                           }
+                       });
     }
 
     public void putSmartphoneAPI(File file) {
@@ -178,19 +200,8 @@ public class ActAssistApi implements Serializable {
         // create request body instance from file
 
         // make a request by calling the corresponding method
-        Call<Smartphone> call = apiService.putSmartphone(this.smartphone_id, this.smartphone);
-        call.enqueue(new Callback<Smartphone>() {
-            @Override
-            public void onResponse(Call<Smartphone> call, Response<Smartphone> response) {
-                controller.onSuccess("successfully put smartphone");
-            }
-
-            @Override
-            public void onFailure(Call<Smartphone> call, Throwable throwable) {
-                controller.onFailure("PUT smartphone failed");
-            }
-        });
-
+        apiService.putSmartphone(this.smartphone_id, this.smartphone);
+        // TODO implement method
     }
 
     public void getActivitiesAPI() {
@@ -198,20 +209,27 @@ public class ActAssistApi implements Serializable {
         ApiService apiService = retrofit.create(ApiService.class);
 
         // make a request by calling the corresponding method
-        Call<List<Activity>> call = apiService.getActivities();
-        call.enqueue(new Callback<List<Activity>>() {
-            @Override
-            public void onResponse(Call<List<Activity>> call, Response<List<Activity>> response) {
-                activities = response.body();
-                activityNames = extractNames(activities);
-                controller.onGetActivitiesSuccess(activityNames);
-            }
+        apiService.getActivities()
+        .subscribeOn(Schedulers.io())
+        .observeOn(AndroidSchedulers.mainThread())
+        .subscribe(new SingleObserver<List<Activity>>() {
+                   @Override
+                   public void onSubscribe(@NonNull Disposable d) {
+                        //compositeDisposable.add(d);
+                   }
 
             @Override
-            public void onFailure(Call<List<Activity>> call, Throwable throwable) {
-                controller.onFailure("GET activities failed");
-            }
-        });
+            public void onSuccess(@NonNull List<Activity> acts) {
+                       activities = acts;
+                       activityNames = extractNames(activities);
+                       controller.onGetActivitiesSuccess(activityNames);
+                   }
+
+                   @Override
+                   public void onError(@NonNull Throwable e) {
+                       controller.onFailure("GET activities failed");
+                   }
+               });
     }
 
 // HELPER methods ----------------------------------------------------------------------------------
