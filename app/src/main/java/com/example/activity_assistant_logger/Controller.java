@@ -140,41 +140,46 @@ public class Controller {
         /** log activity to file if an experiment is conducted
          *
          */
-        if(turnedOn){
-            actAssist.setSmartphoneLogging(true);
-            mainact.createNotification();
-            if (actAssist.isExperimentConducted()){
-                actAssist.putSmartphoneAPI();
-                try {
-                    String selectedActivity = mainact.getSelectedActivity();
-                    activityFile.createActivity(
-                            mainact.getApplicationContext(),
-                            selectedActivity
-                            );
-                    currentActivity = selectedActivity;
-                }catch (Exception e){
-                    Toast.makeText(mainact, "sth went wrong writing activity file",
-                            Toast.LENGTH_SHORT).show();
+        if(deviceState == DEVICE_STATUS_REGISTERED) {
+            if (turnedOn) {
+                actAssist.setSmartphoneLogging(true);
+                mainact.createNotification();
+                if (actAssist.isExperimentConducted()) {
+                    actAssist.putSmartphoneAPI();
+                    try {
+                        String selectedActivity = mainact.getSelectedActivity();
+                        activityFile.createActivity(
+                                mainact.getApplicationContext(),
+                                selectedActivity
+                        );
+                        currentActivity = selectedActivity;
+                    } catch (Exception e) {
+                        Toast.makeText(mainact, "sth went wrong writing activity file",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                }
+            } else {
+                actAssist.setSmartphoneLogging(false);
+                mainact.removeNotification();
+                if (actAssist.isExperimentConducted()) {
+                    actAssist.putSmartphoneAPI();
+                    try {
+                        activityFile.finishActivity(
+                                mainact.getApplicationContext(),
+                                mainact.getSelectedActivity());
+                        currentActivity = null;
+                    } catch (Exception e) {
+                        Toast.makeText(mainact, "sth went wrong writing activity file",
+                                Toast.LENGTH_SHORT).show();
+                    }
                 }
             }
         }
         else{
-            actAssist.setSmartphoneLogging(false);
-            mainact.removeNotification();
-            if (actAssist.isExperimentConducted()){
-                actAssist.putSmartphoneAPI();
-                try {
-                    activityFile.finishActivity(
-                            mainact.getApplicationContext(),
-                            mainact.getSelectedActivity());
-                    currentActivity = null;
-                }catch (Exception e){
-                    Toast.makeText(mainact, "sth went wrong writing activity file",
-                            Toast.LENGTH_SHORT).show();
-                }
-            }
+            mainact.setSwitchLogging(false);
         }
     }
+
 
     public void receivedDataFromQRCode(JSONObject jsonObject){
         /** try to create an activity assistant api
