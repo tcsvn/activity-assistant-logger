@@ -2,6 +2,7 @@ package com.example.activity_assistant_logger;
 
 import android.content.Context;
 import android.content.Intent;
+import android.util.Pair;
 import android.widget.Toast;
 
 import org.json.JSONException;
@@ -15,8 +16,19 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.List;
 
 import com.example.activity_assistant_logger.actassistapi.ActAssistApi;
+import com.example.activity_assistant_logger.actassistapi.Activity;
+import com.example.activity_assistant_logger.actassistapi.Smartphone;
+
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.annotations.NonNull;
+import io.reactivex.rxjava3.core.Scheduler;
+import io.reactivex.rxjava3.core.Single;
+import io.reactivex.rxjava3.core.SingleObserver;
+import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 
 /** This is where the apps logic happens
 *
@@ -55,16 +67,20 @@ public class Controller {
     private void loadFromConfig(){
          try {
             this.actAssist = data.loadActAssistFromFile(mainact.getApplicationContext(), this);
+            mainact.setReloadSpinnerActivity((ArrayList<String>) actAssist.getActivities());
+            mainact.setServerStatus(SERVER_STATUS_OFFLINE);
+            mainact.setDeviceStatus(DEVICE_STATUS_REGISTERED);
+            deviceState = DEVICE_STATUS_REGISTERED;
         } catch (JSONException e) {
             Toast.makeText(mainact, "couldn't load server config to file", Toast.LENGTH_SHORT).show();
             e.printStackTrace();
+            resetConfig();
         } catch (IOException | ClassNotFoundException e) {
             Toast.makeText(mainact, "couldn't load server config to file", Toast.LENGTH_SHORT).show();
             e.printStackTrace();
+            resetConfig();
         }
-        mainact.setServerStatus(SERVER_STATUS_OFFLINE);
-        mainact.setDeviceStatus(DEVICE_STATUS_REGISTERED);
-        this.deviceState = DEVICE_STATUS_REGISTERED;
+
     }
 
     private void resetConfig(){
@@ -110,7 +126,7 @@ public class Controller {
 //__GUI Callbacks__---------------------------------------------------------------------------------
     public void onCreate(){
         // executed when main activity starts
-        mainact.resetSpinnerLists();
+        //mainact.resetSpinnerLists();
         // START DEBUG
         // code to manually delete config file
         //File dir = getFilesDir();
@@ -166,19 +182,41 @@ public class Controller {
         try {
             this.actAssist = new ActAssistApi(this,
                     jsonObject.getString(ActAssistApi.URL_API),
-                    jsonObject.getInt(ActAssistApi.SMARTPHONE_ID),
-                    jsonObject.getString(ActAssistApi.URL_PERSON),
                     jsonObject.getString(ActAssistApi.USERNAME),
                     jsonObject.getString(ActAssistApi.PASSWORD)
                     );
-            this.deviceState = DEVICE_STATUS_REGISTERED;
-            mainact.setDeviceStatus(DEVICE_STATUS_REGISTERED);
-            mainact.setServerStatus(SERVER_STATUS_OFFLINE);
-            try{
-                data.dumpActAssistToFile(mainact.getApplicationContext(), actAssist);
-            }catch (IOException e){
-                e.printStackTrace();
-            }
+            // TODO first create smartphone
+            // then get smartphone
+            actAssist.getSmartphoneAndActivties(jsonObject.getInt(ActAssistApi.SMARTPHONE_ID))
+                    .subscribe(
+                    new SingleObserver<Pair<List<Activity>, Smartphone>>() {
+                @Override
+                public void onSubscribe(@NonNull Disposable d) {
+                }
+                @Override
+                public void onSuccess(@NonNull Pair<List<Activity>, Smartphone> listSmartphonePair) {
+                    actAssist.setActivities(listSmartphonePair.first);
+                    actAssist.setSmartphone(listSmartphonePair.second);
+                    try {
+                        data.dumpActAssistToFile(
+                            mainact.getApplicationContext(),
+                            actAssist);
+                    }catch (Exception e){
+                        e.printStackTrace();
+                    }
+                    mainact.setReloadSpinnerActivity((ArrayList<String>) actAssist.getActivities());
+                    mainact.setServerStatus(SERVER_STATUS_ONLINE);
+                    deviceState = DEVICE_STATUS_REGISTERED;
+                    mainact.setDeviceStatus(DEVICE_STATUS_REGISTERED);
+                }
+
+                @Override
+                public void onError(@NonNull Throwable e) {
+                    mainact.setServerStatus(SERVER_STATUS_OFFLINE);
+                    deviceState = DEVICE_STATUS_UNCONFIGURED;
+                    mainact.setDeviceStatus(DEVICE_STATUS_UNCONFIGURED);
+                }
+            });
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -238,18 +276,37 @@ public class Controller {
         /** synchronize cached data files
          * */
         if (this.deviceState.equals(DEVICE_STATUS_REGISTERED)){
-            // todo make a ping request
-            actAssist.getSmartphoneAPI();
-            actAssist.getActivitiesAPI();
-            try {
-                // TODO do this when the activities where received from server
-                data.dumpActAssistToFile(
-                        mainact.getApplicationContext(),
-                        actAssist);
-            }catch (Exception e){
-                // TODO do sth if this fails
+            actAssist.getSmartphoneAndActivties()
+                    .subscribe(new SingleObserver<Pair<List<Activity>, Smartphone>>() {
+                @Override
+                public void onSubscribe(@NonNull Disposable d) {
 
-            }
+                }
+
+                @Override
+                public void onSuccess(@NonNull Pair<List<Activity>, Smartphone> listSmartphonePair) {
+                    actAssist.setActivities(listSmartphonePair.first);
+                    actAssist.setSmartphone(listSmartphonePair.second);
+                    try {
+                        data.dumpActAssistToFile(
+                            mainact.getApplicationContext(),
+                            actAssist);
+                    }catch (Exception e){
+                        e.printStackTrace();
+                    // TODO do sth if this fails
+
+                    }
+                    mainact.setReloadSpinnerActivity((ArrayList<String>) actAssist.getActivities());
+                }
+
+                @Override
+                public void onError(@NonNull Throwable e) {
+                    System.out.println("asdf");
+
+                }
+            });
+
+
         }
     }
 }

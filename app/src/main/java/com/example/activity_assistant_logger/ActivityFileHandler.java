@@ -38,8 +38,14 @@ public class ActivityFileHandler {
     }
 
     public boolean isFirstWrite(Context appContext){
-        File file = new File(ACTIVITY_FILE_NAME);
-        return !file.exists();
+        try {
+            List<String[]> cur_file = new CSVFile(appContext.openFileInput(ACTIVITY_FILE_NAME)).read();
+            boolean tmp = cur_file.size() > 1;
+            return !tmp;
+        }
+        catch(FileNotFoundException e){
+            return true;
+        }
     }
 
     public String getActivityFileAsString(Context appContext) throws FileNotFoundException {
@@ -65,6 +71,7 @@ public class ActivityFileHandler {
     }
 
     public boolean deleteActivityFile(Context appContext){
+        this.isFirstWrite = true;
         return appContext.deleteFile(ACTIVITY_FILE_NAME);
     }
 

@@ -1,7 +1,10 @@
 package com.example.activity_assistant_logger.actassistapi;
 
+import android.util.Pair;
+
 import com.android.volley.RequestQueue;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -11,12 +14,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.example.activity_assistant_logger.Controller;
+import com.google.android.gms.common.api.Api;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.annotations.NonNull;
 import io.reactivex.rxjava3.core.Scheduler;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.core.SingleObserver;
+import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import retrofit2.Call;
@@ -39,7 +47,6 @@ public class ActAssistApi implements Serializable {
     public final static String EXP_NOT_RUNNING = "experiment_not_running";
 
     private transient Controller controller;
-    private int smartphone_id;
     private String url_api;
     private String password;
     private String user_name;
@@ -48,15 +55,14 @@ public class ActAssistApi implements Serializable {
     private List <Activity> activities;
     private ArrayList <String> activityNames;
     private String experimentRunning;
+    //private CompositeDisposable compDisp;
 
-    public ActAssistApi(Controller controller, String url_api, int smartpone_id,
-                        String url_person, String user_name, String password) {
+    public ActAssistApi(Controller controller, String url_api, String user_name, String password) {
         this.controller = controller;
         this.user_name = user_name;
         this.password = password;
         this.url_api = url_api;
         this.smartphone = null;
-        this.smartphone_id = smartpone_id;
 
         // intialize http client
         this.retrofit = new Retrofit.Builder()
@@ -64,7 +70,7 @@ public class ActAssistApi implements Serializable {
                 .addConverterFactory(GsonConverterFactory.create())
                 .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
                 .build();
-
+        //compDisp = new CompositeDisposable();
         // DEBUG START
         this.experimentRunning = EXP_RUNNING;
         // DEBUG END
@@ -82,12 +88,14 @@ public class ActAssistApi implements Serializable {
 
 ///__JSON__------------------------------------------------------------------------------------------
     public JSONObject serializeToJSON(){
+        GsonBuilder builder = new GsonBuilder();
+        Gson gson = builder.create();
         JSONObject jsonObject = new JSONObject();
         try {
             jsonObject.put("user_name", user_name);
             jsonObject.put("password", password);
             jsonObject.put("url_api", url_api);
-            jsonObject.put("smartphone_id", smartphone_id);
+            jsonObject.put("smartphone_json", gson.toJson(smartphone));
             jsonObject.put("activity_list", activityNames);
         } catch (JSONException e) {
             e.printStackTrace();
@@ -95,15 +103,23 @@ public class ActAssistApi implements Serializable {
         return jsonObject;
     }
 
-    public static ActAssistApi serializeFromJSON(Controller con, JSONObject jsonObject) throws JSONException {
+    public static ActAssistApi serializeFromJSON(Controller con, JSONObject jsonObject, List<String> activities) throws JSONException {
         ActAssistApi newApi = new ActAssistApi(
                 con,
                 jsonObject.getString("url_api"),
-                jsonObject.getInt("smartphone_id"),
-                jsonObject.getString("url_person"),
                 jsonObject.getString("user_name"),
                 jsonObject.getString("password")
         );
+        newApi.setActivities((ArrayList<String>) activities);
+        Gson gson = new GsonBuilder().create();
+        try {
+            newApi.setSmartphone(gson.fromJson(
+                    jsonObject.getString("smartphone_json"),
+                    Smartphone.class
+            ));
+        }catch(Exception e){
+
+        }
         return newApi;
     }
 
@@ -115,6 +131,17 @@ public class ActAssistApi implements Serializable {
 
     public List<String> getActivities(){
         return activityNames;
+    }
+
+    public void setSmartphone(Smartphone sm){
+        this.smartphone = sm;
+    }
+    public void setActivities(List<Activity> activities){
+        this.activityNames = this.extractNames(activities);
+    }
+
+    public void setActivities(ArrayList<String> activities){
+        this.activityNames = activities;
     }
 
     public boolean isExperimentConducted(){
@@ -142,26 +169,30 @@ public class ActAssistApi implements Serializable {
         ApiService apiService = retrofit.create(ApiService.class);
 
         // make a request by calling the corresponding method
-         apiService.getSmartphone(this.smartphone_id)
-        .subscribeOn(Schedulers.io())
-        .observeOn(AndroidSchedulers.mainThread())
-        .subscribe(new SingleObserver<Smartphone>() {
-                   @Override
-                   public void onSubscribe(@NonNull Disposable d) {
-                        //compositeDisposable.add(d);
-                   }
+//        compDisp.add(apiService.getSmartphone(this.smartphone_id))
+//                .doOnSuccess(sm -> smartphone = sm)
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(AndroidSchedulers.mainThread())
+//                .subscribe(
+//                        throwable -> controller.onFailure("GET smartphone failed")
+//                ));
+    }
+    public Single<Pair <List<Activity>, Smartphone >> getSmartphoneAndActivties(){
+        ApiService apiService = retrofit.create(ApiService.class);
+        Single <List<Activity>> actListSingle = apiService.getActivities();
+        Single <Smartphone> smSingle = apiService.getSmartphone(smartphone.getId());
+        return actListSingle.zipWith(smSingle, Pair::new)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread());
+    }
 
-                   @Override
-                   public void onSuccess(@NonNull Smartphone sm) {
-                        smartphone = sm;
-                        controller.onSuccess("GET smartphone success");
-                   }
-
-                   @Override
-                   public void onError(@NonNull Throwable e) {
-                       controller.onFailure("GET smartphone failed");
-                   }
-               });
+    public Single<Pair <List<Activity>, Smartphone >> getSmartphoneAndActivties(int smartphoneId){
+        ApiService apiService = retrofit.create(ApiService.class);
+        Single <List<Activity>> actListSingle = apiService.getActivities();
+        Single <Smartphone> smSingle = apiService.getSmartphone(smartphoneId);
+        return actListSingle.zipWith(smSingle, Pair::new)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread());
     }
 
     public void putSmartphoneAPI() {
@@ -169,7 +200,7 @@ public class ActAssistApi implements Serializable {
         ApiService apiService = retrofit.create(ApiService.class);
 
         // make a request by calling the corresponding method
-        apiService.putSmartphone(this.smartphone_id, this.smartphone)
+        apiService.putSmartphone(this.smartphone.getId(), this.smartphone)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new SingleObserver<Smartphone>() {
@@ -200,7 +231,7 @@ public class ActAssistApi implements Serializable {
         // create request body instance from file
 
         // make a request by calling the corresponding method
-        apiService.putSmartphone(this.smartphone_id, this.smartphone);
+        apiService.putSmartphone(this.smartphone.getId(), this.smartphone);
         // TODO implement method
     }
 
@@ -241,32 +272,5 @@ public class ActAssistApi implements Serializable {
         return result;
     }
 
-    //Single<Smartphone> sm = apiService.getSmartphone(smartphoneId)
-        //        .subscribe(new SingleObserver<Smartphone>() {
-        //            @Override
-        //            public void onSubscribe(@NonNull Disposable d) {
-        //                compositeDisposable.add(d);
-        //            }
 
-        //            @Override
-        //            public void onSuccess(@NonNull Smartphone smartphone) {
-
-        //            }
-
-        //            @Override
-        //            public void onError(@NonNull Throwable e) {
-
-        //            }
-        //        });
 }
-
-
-////__REAL_METHODS_I_NEED__------------------
-
-
-//// -------------------------------------------------------------------------------------------------
-//    public void pingServer(){
-//       pingServer("", new String[]{});
-//    }
-//
-

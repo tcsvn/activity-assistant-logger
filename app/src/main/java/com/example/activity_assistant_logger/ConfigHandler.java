@@ -15,13 +15,20 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
 
 import com.example.activity_assistant_logger.actassistapi.ActAssistApi;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 public class ConfigHandler {
     //final public String CONNECTION_FILE_NAME = "act_assist.json";
     final public String CONNECTION_FILE_NAME = "test.ser";
-    final public String ACTIVITIES_FILE_NAME = "activities.json";
 
 //    public ActAssistApi loadActAssistFromFile(Context appContext, Controller con) throws JSONException, IOException {
 //        String json_as_string = readConnectionDataFile(appContext);
@@ -32,40 +39,33 @@ public class ConfigHandler {
 //        JSONObject jsonObject = actAssist.serializeToJSON();
 //        this.saveConnectionDataToFile(jsonObject.toString(), appContext);
 //    }
+
     public ActAssistApi loadActAssistFromFile(Context appContext, Controller con) throws JSONException, IOException, ClassNotFoundException {
-        FileInputStream is = appContext.openFileInput(CONNECTION_FILE_NAME);
-        ObjectInputStream ois = new ObjectInputStream(is);
-        ActAssistApi actAssist = (ActAssistApi) ois.readObject();
-        ois.close();
-        is.close();
+        String dump = readConnectionDataFile(appContext);
+        JSONObject obj = new JSONObject(dump);
+        String act_list = obj.getString("activity_list");
+        String [] acts = act_list.split(",");
+        acts[0] = acts[0].substring(1);
+        acts[acts.length-1] = acts[acts.length-1].substring(0,acts[acts.length-1].length()-1);
+        List<String> tmp = new ArrayList<String>();
 
-        String tmp = readConnectionDataFile(appContext);
-
-
-
+        for (int i = 0; i < acts.length; i++){
+            tmp.add(acts[i]);
+        }
+        ActAssistApi actAssist = ActAssistApi.serializeFromJSON(con, obj, tmp);
         actAssist.initRetrofit();
-        actAssist.setController(con);
         return actAssist;
     }
 
     public void dumpActAssistToFile(Context appContext, ActAssistApi actAssist) throws IOException, JSONException {
-        FileOutputStream os = appContext.openFileOutput(CONNECTION_FILE_NAME, Context.MODE_PRIVATE);
-        ObjectOutputStream oos = new ObjectOutputStream(os);
-        oos.writeObject(actAssist);
-        oos.close();
-        os.close();
-
-        // save activities as list in separate file
-        JSONObject dump = new JSONObject();
-        dump.put("activities", actAssist.getActivities());
+        JSONObject dump = actAssist.serializeToJSON();
         saveConnectionDataToFile(dump.toString(), appContext);
     }
 
     public boolean configExists(Context appContext){
        try {
            File apiFile = appContext.getFileStreamPath(CONNECTION_FILE_NAME);
-           File actFile = appContext.getFileStreamPath(ACTIVITIES_FILE_NAME);
-           return apiFile.exists() && actFile.exists();
+           return apiFile.exists();
        } catch(Exception e){
            return false;
        }
@@ -75,21 +75,19 @@ public class ConfigHandler {
         File dir = appContext.getFilesDir();
         File file = new File(dir, CONNECTION_FILE_NAME);
         file.delete();
-        File file2 = new File(dir, ACTIVITIES_FILE_NAME);
-        file2.delete();
     }
 
 ////__IO__--------------------------------------------------------------------------------------------
     private void saveConnectionDataToFile(String fileContents, Context appContext) throws IOException {
         FileOutputStream outputStream;
-            outputStream = appContext.openFileOutput(ACTIVITIES_FILE_NAME, appContext.MODE_PRIVATE);
+            outputStream = appContext.openFileOutput(CONNECTION_FILE_NAME, appContext.MODE_PRIVATE);
             outputStream.write(fileContents.getBytes());
             outputStream.close();
     }
 
     private String readConnectionDataFile(Context context) throws IOException {
         String ret = "";
-        InputStream inputStream = context.openFileInput(ACTIVITIES_FILE_NAME);
+        InputStream inputStream = context.openFileInput(CONNECTION_FILE_NAME);
         if ( inputStream != null ) {
                 InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
                 BufferedReader bufferedReader = new BufferedReader(inputStreamReader);

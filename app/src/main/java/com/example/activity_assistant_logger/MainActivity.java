@@ -191,6 +191,7 @@ public class MainActivity extends AppCompatActivity implements MySpinner.OnItemS
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         mySpinner_activity.setAdapter(adapter);
         // TODO check what this does
+        //      I think this was to set the activity to from the server. Is this still needed though?
         //if(controller.isActAssistConfigured()
         //        && controller.deviceHasActivity()
         //        && containsElement(adapter, controller.getDeviceActivityName())){
