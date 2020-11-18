@@ -29,6 +29,7 @@ import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.core.SingleObserver;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
+import okhttp3.ResponseBody;
 
 /** This is where the apps logic happens
 *
@@ -142,7 +143,7 @@ public class Controller {
          */
         if(deviceState == DEVICE_STATUS_REGISTERED) {
             if (turnedOn) {
-                actAssist.setSmartphoneLogging(true);
+                //actAssist.setSmartphoneLogging(true);
                 mainact.createNotification();
                 if (actAssist.isExperimentConducted()) {
                     //actAssist.putSmartphoneAPI();
@@ -159,7 +160,7 @@ public class Controller {
                     }
                 }
             } else {
-                actAssist.setSmartphoneLogging(false);
+                //actAssist.setSmartphoneLogging(false);
                 mainact.removeNotification();
                 if (actAssist.isExperimentConducted()) {
                     //actAssist.putSmartphoneAPI();
@@ -266,8 +267,7 @@ public class Controller {
                     );
                 currentActivity = selectedActivity;
             }catch (Exception e) {
-                Toast.makeText(mainact, "sth went wrong writing activity file",
-                        Toast.LENGTH_SHORT).show();
+                mainact.createToast("sth went wrong writing activity file");
             }
         }
     }
@@ -324,8 +324,7 @@ public class Controller {
                      */
                     actAssist.setSmartphone(listSmartphonePair.second);
 
-                    // check if the android app is in push mode
-                    // if not the experiment is over or the app is marked dirty
+                    // check if the android app is in push mode; if true push the activity file to the server
                     if (actAssist.getSmartphone().getSynchronized()) {
                         actAssist.setActivities(listSmartphonePair.first);
                         try {
@@ -343,7 +342,6 @@ public class Controller {
                         /** put a Smartphone with file to the
                         * */
                         actAssist.putSmartphoneAPI(activityFile.getActivityMultipart(mainact.getApplicationContext()))
-                        //actAssist.putSmartphoneAPI()
                                 .subscribe(new SingleObserver<Smartphone>() {
                                     @Override
                                     public void onSubscribe(@NonNull Disposable d) {
@@ -352,30 +350,96 @@ public class Controller {
 
                                     @Override
                                     public void onSuccess(@NonNull Smartphone smartphone) {
-                                        System.out.println("asdf");
+                                        mainact.createToast("successfully uploaded activity file");
                                     }
 
                                     @Override
                                     public void onError(@NonNull Throwable e) {
-                                        System.out.println("asdf");
+                                        mainact.createToast("sth. went wrong uploading the activity file");
                                     }
                                 });
                     }
+                    // the smartphone has been marked dirty; get the activity file from server
                     else{
                         actAssist.setActivities(listSmartphonePair.first);
                         mainact.setReloadSpinnerActivity((ArrayList<String>) actAssist.getActivities());
-                        // TODO download activity file
+                        String actFileUrl = actAssist.getSmartphone().getActivityFile();
+                        if(actFileUrl != null){
+                            /** there is an activity file on the server present to download
+                            * */
+                            actAssist.downloadActivityFile()
+                            .subscribe(new SingleObserver<ResponseBody>() {
+                                @Override
+                                public void onSubscribe(@NonNull Disposable d) {
+
+                                }
+
+                                @Override
+                                public void onSuccess(@NonNull ResponseBody responseBody) {
+                                    try {
+                                        activityFile.replaceActivityFile(mainact.getApplicationContext(), responseBody);
+                                    }catch(IOException e){
+                                        mainact.createToast("successfully downloaded activity file but couldn't save");
+                                    }
+                                    actAssist.getSmartphone().setSynchronized(true);
+                                    actAssist.putSmartphoneAPI(activityFile.getActivityMultipart(mainact.getApplicationContext()))
+                                    .subscribe(new SingleObserver<Smartphone>() {
+                                                @Override
+                                                public void onSubscribe(@NonNull Disposable d) {
+
+                                                }
+
+                                                @Override
+                                                public void onSuccess(@NonNull Smartphone smartphone) {
+                                                    mainact.createToast("successfully downloaded activity file");
+                                                }
+
+                                                @Override
+                                                public void onError(@NonNull Throwable e) {
+                                                    mainact.createToast("no connection to server");
+                                                    mainact.setServerStatus(SERVER_STATUS_OFFLINE);
+                                                }
+                                            });
+                                }
+
+                                @Override
+                                public void onError(@NonNull Throwable e) {
+                                    mainact.createToast("sth. went wrong downloading activity file");
+                                }
+                        });
+                        }
+                        else{
+                            /** there no activity file on the server but still have to mark it synchronized
+                            * */
+                            activityFile.deleteActivityFile(mainact.getApplicationContext());
+                            actAssist.getSmartphone().setSynchronized(true);
+                            actAssist.putSmartphoneAPI(activityFile.getActivityMultipart(mainact.getApplicationContext()))
+                            .subscribe(new SingleObserver<Smartphone>() {
+                                        @Override
+                                        public void onSubscribe(@NonNull Disposable d) {
+
+                                        }
+
+                                        @Override
+                                        public void onSuccess(@NonNull Smartphone smartphone) {
+                                            mainact.createToast("successfully deleted activity file");
+                                        }
+
+                                        @Override
+                                        public void onError(@NonNull Throwable e) {
+                                            mainact.createToast("no connection to server");
+                                            mainact.setServerStatus(SERVER_STATUS_OFFLINE);
+                                        }
+                                    });
+                        }
                     }
                 }
 
                 @Override
                 public void onError(@NonNull Throwable e) {
-                    System.out.println("asdf");
-
+                    mainact.createToast("couldn't connect to server");
                 }
             });
-
-
         }
     }
 }

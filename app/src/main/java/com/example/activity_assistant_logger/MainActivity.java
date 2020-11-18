@@ -20,6 +20,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.common.api.CommonStatusCodes;
 import com.google.android.gms.vision.barcode.Barcode;
@@ -124,6 +125,10 @@ public class MainActivity extends AppCompatActivity implements MySpinner.OnItemS
             notificationManager.cancel(0);
         }
         catch (Exception e){ }
+    }
+
+    public void createToast(String text){
+        Toast.makeText(this, text, Toast.LENGTH_SHORT).show();
     }
 
 //__GETTER/SETTER----------------------------------------------------------------------------------

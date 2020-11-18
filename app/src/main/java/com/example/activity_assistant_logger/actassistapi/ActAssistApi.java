@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.example.activity_assistant_logger.Controller;
+import com.google.android.gms.common.SignInButton;
 import com.google.android.gms.common.api.Api;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -139,6 +140,7 @@ public class ActAssistApi implements Serializable {
     public void setSmartphone(Smartphone sm){
         this.smartphone = sm;
     }
+
     public void setActivities(List<Activity> activities){
         this.activityNames = this.extractNames(activities);
     }
@@ -161,9 +163,6 @@ public class ActAssistApi implements Serializable {
                 || experimentState.equals(EXP_RUNNING)){
             this.experimentRunning = experimentState;
         }
-    }
-    public void setSmartphoneLogging(Boolean val){
-        smartphone.setLogging(val);
     }
 
 // API request
@@ -222,30 +221,23 @@ public class ActAssistApi implements Serializable {
                 .observeOn(AndroidSchedulers.mainThread());
     }
 
-    public Single<Smartphone> putSmartphoneAPI() {
-        // create an instance of the ApiService
+//    public Single<Smartphone> putSmartphoneAPI() {
+//        /** puts a smartphone Object to the API without the file
+//         *
+//         */
+//        // create an instance of the ApiService
+//        ApiService apiService = retrofit.create(ApiService.class);
+//        // make a request by calling the corresponding method
+//        return apiService.putSmartphone(this.smartphone.getId(), sm)
+//                .subscribeOn(Schedulers.io())
+//                .observeOn(AndroidSchedulers.mainThread());
+//    }
+    public Single<ResponseBody> downloadActivityFile(){
+        String url = smartphone.getActivityFile();
         ApiService apiService = retrofit.create(ApiService.class);
-
-        // make a request by calling the corresponding method
-        return apiService.putSmartphone(this.smartphone.getId(), this.smartphone)
+        return apiService.downloadActivityFile(url)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread());
-                //.subscribe(new SingleObserver<Smartphone>() {
-              //           @Override
-              //           public void onSubscribe(@NonNull Disposable d) {
-              //                //compositeDisposable.add(d);
-              //           }
-
-              //           @Override
-              //           public void onSuccess(@NonNull Smartphone sm) {
-              //               controller.onSuccess("successfully put smartphone");
-              //           }
-
-              //           @Override
-              //           public void onError(@NonNull Throwable e) {
-              //               controller.onFailure("PUT smartphone failed");
-              //           }
-              //       });
     }
 
     public Single<Smartphone> putSmartphoneAPI(MultipartBody.Part file) {
@@ -255,20 +247,32 @@ public class ActAssistApi implements Serializable {
         // create an instance of the ApiService
         ApiService apiService = retrofit.create(ApiService.class);
 
+        // get strings of true and false for logging and synchronized
+        String sm_logging = "false";
+        String sm_synchronized = "false";
+        if(smartphone.getLogging()){
+            sm_logging = "true";
+        }
+        if (smartphone.getSynchronized()){
+            sm_synchronized = "true";
+        }
+
         // create request body instance from file
-        // TODO works for putSmartphone API
-        //String personUrl = "http://192.168.178.47:8000/api/v1/persons/1/?format=json";
-        //String personUrl = "http://localhost:8000/api/v1/persons/1/";
         RequestBody name = RequestBody.create(MultipartBody.FORM, smartphone.getName());
         RequestBody personUrl = RequestBody.create(MultipartBody.FORM, smartphone.getPerson());
-        //RequestBody loggedActivity = RequestBody.create(MultipartBody.FORM, smartphone.getLoggedActivity());
-       return apiService.putSmartphone(
-               smartphone.getId(),
-               name,
-               personUrl,
-               //loggedActivity,
-               file)
-                .subscribeOn(Schedulers.io())
+        RequestBody logging = RequestBody.create(MultipartBody.FORM, sm_logging);
+        RequestBody _synchronized = RequestBody.create(MultipartBody.FORM, sm_synchronized);
+        Single <Smartphone> res = null;
+        try{
+            RequestBody loggedActivity = RequestBody.create(MultipartBody.FORM, smartphone.getLoggedActivity());
+            res = apiService.putSmartphone(smartphone.getId(), name, personUrl,
+               logging, loggedActivity,_synchronized, file);
+        }
+        catch (Exception e){
+            res = apiService.putSmartphone(smartphone.getId(), name, personUrl,
+                    logging, _synchronized, file);
+        }
+       return  res.subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread());
     }
 

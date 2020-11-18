@@ -52,11 +52,22 @@ public interface ApiService {
     Single<Smartphone> putSmartphone(
             @Path("smartphone_id") int smartphoneId,
             @Part("name") RequestBody name,
-            @Part("person") RequestBody personUrl,
-            //@Part("logged_activity") RequestBody loggedActivity,
+            @Part("person") RequestBody person,
+            @Part("logging") RequestBody logging,
+            @Part("synchronized") RequestBody _synchronized,
             @Part MultipartBody.Part file
             );
-
+    @PUT("smartphones/{smartphone_id}/?format=json")
+    @Multipart
+    Single<Smartphone> putSmartphone(
+            @Path("smartphone_id") int smartphoneId,
+            @Part("name") RequestBody name,
+            @Part("person") RequestBody person,
+            @Part("logging") RequestBody logging,
+            @Part("logged_activity") RequestBody loggedActivity,
+            @Part("synchronized") RequestBody _synchronized,
+            @Part MultipartBody.Part file
+            );
     //https://futurestud.io/tutorials/retrofit-2-how-to-download-files-from-server
     @GET
     Single <ResponseBody> downloadActivityFile(@Url String fileUrl);
