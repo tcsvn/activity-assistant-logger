@@ -145,7 +145,7 @@ public class Controller {
                 actAssist.setSmartphoneLogging(true);
                 mainact.createNotification();
                 if (actAssist.isExperimentConducted()) {
-                    actAssist.putSmartphoneAPI();
+                    //actAssist.putSmartphoneAPI();
                     try {
                         String selectedActivity = mainact.getSelectedActivity();
                         activityFile.createActivity(
@@ -162,7 +162,7 @@ public class Controller {
                 actAssist.setSmartphoneLogging(false);
                 mainact.removeNotification();
                 if (actAssist.isExperimentConducted()) {
-                    actAssist.putSmartphoneAPI();
+                    //actAssist.putSmartphoneAPI();
                     try {
                         activityFile.finishActivity(
                                 mainact.getApplicationContext(),
@@ -180,48 +180,75 @@ public class Controller {
         }
     }
 
-
     public void receivedDataFromQRCode(JSONObject jsonObject){
-        /** try to create an activity assistant api
+        /** creates an activity assistant api
+         * if there is already a smartphone registered on the api
+         * copy all data from the smartphone of the api including downloading the activity file
+         * if there is no smartphone registered on the api
+         * then create an empty smartphone
+         * - also get activities
         * */
         try {
+            String urlApi = jsonObject.getString(ActAssistApi.URL_API);
             this.actAssist = new ActAssistApi(this,
-                    jsonObject.getString(ActAssistApi.URL_API),
+                    urlApi,
                     jsonObject.getString(ActAssistApi.USERNAME),
                     jsonObject.getString(ActAssistApi.PASSWORD)
                     );
-            // TODO first create smartphone
-            // then get smartphone
-            actAssist.getSmartphoneAndActivties(jsonObject.getInt(ActAssistApi.SMARTPHONE_ID))
-                    .subscribe(
-                    new SingleObserver<Pair<List<Activity>, Smartphone>>() {
-                @Override
-                public void onSubscribe(@NonNull Disposable d) {
-                }
-                @Override
-                public void onSuccess(@NonNull Pair<List<Activity>, Smartphone> listSmartphonePair) {
-                    actAssist.setActivities(listSmartphonePair.first);
-                    actAssist.setSmartphone(listSmartphonePair.second);
-                    try {
-                        data.dumpActAssistToFile(
-                            mainact.getApplicationContext(),
-                            actAssist);
-                    }catch (Exception e){
-                        e.printStackTrace();
-                    }
-                    mainact.setReloadSpinnerActivity((ArrayList<String>) actAssist.getActivities());
-                    mainact.setServerStatus(SERVER_STATUS_ONLINE);
-                    deviceState = DEVICE_STATUS_REGISTERED;
-                    mainact.setDeviceStatus(DEVICE_STATUS_REGISTERED);
-                }
 
-                @Override
-                public void onError(@NonNull Throwable e) {
-                    mainact.setServerStatus(SERVER_STATUS_OFFLINE);
-                    deviceState = DEVICE_STATUS_UNCONFIGURED;
-                    mainact.setDeviceStatus(DEVICE_STATUS_UNCONFIGURED);
-                }
-            });
+
+            // in the decoded message there is a smartphone url present
+            // if already an instance exists
+            boolean smAlreadyCreated = false;
+            try{
+                String tmp = jsonObject.getString("smartphone_url");
+                smAlreadyCreated=true;
+            }
+            catch(Exception e){
+                smAlreadyCreated=false;
+            }
+            if (smAlreadyCreated){
+                // TODO implement
+                //actAssist.getSmartphoneAndActivties()
+            }
+            else {
+                Smartphone sm = actAssist.createNewSmartphone(
+                    urlApi +
+                    jsonObject.getString(ActAssistApi.URL_PERSON));
+                actAssist.createSmartphoneAndGetActivties(sm)
+                        .subscribe(new SingleObserver<Pair<List<Activity>, Smartphone>>() {
+                            @Override
+                            public void onSubscribe(@NonNull Disposable d) {
+
+                            }
+
+                            @Override
+                            public void onSuccess(@NonNull Pair<List<Activity>, Smartphone> listSmartphonePair) {
+                                actAssist.setActivities(listSmartphonePair.first);
+                                actAssist.setSmartphone(listSmartphonePair.second);
+                                try {
+                                    data.dumpActAssistToFile(
+                                            mainact.getApplicationContext(),
+                                            actAssist);
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                    // TODO do sth if this fails
+
+                                }
+                                mainact.setReloadSpinnerActivity((ArrayList<String>) actAssist.getActivities());
+                                mainact.setServerStatus(SERVER_STATUS_ONLINE);
+                                deviceState = DEVICE_STATUS_REGISTERED;
+                                mainact.setDeviceStatus(DEVICE_STATUS_REGISTERED);
+                            }
+
+                            @Override
+                            public void onError(@NonNull Throwable e) {
+                                mainact.setServerStatus(SERVER_STATUS_OFFLINE);
+                                deviceState = DEVICE_STATUS_UNCONFIGURED;
+                                mainact.setDeviceStatus(DEVICE_STATUS_UNCONFIGURED);
+                            }
+                        });
+            }
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -246,9 +273,7 @@ public class Controller {
     }
 
     public void onBtnScanQRCode(){
-        /** starts to scan
-         *
-         */
+        /** starts to scanning activityi */
         Intent intent = new Intent(mainact, BarcodeCaptureActivity.class);
         mainact.startActivityForResult(intent, 0);
     }
@@ -279,6 +304,10 @@ public class Controller {
 
     public void onBtnSynchronize(){
         /** synchronize cached data files
+         * first gets a smartphone and checks if it is in push mode or not
+         * if it is in push mode pushes smartphone and activity file to server
+         * if it is not synchronized delete local activity file and
+         * request new activities and pull activity file from server
          * */
         if (this.deviceState.equals(DEVICE_STATUS_REGISTERED)){
             actAssist.getSmartphoneAndActivties()
@@ -290,18 +319,53 @@ public class Controller {
 
                 @Override
                 public void onSuccess(@NonNull Pair<List<Activity>, Smartphone> listSmartphonePair) {
-                    actAssist.setActivities(listSmartphonePair.first);
+                    /** check if it is in push mode
+                     *
+                     */
                     actAssist.setSmartphone(listSmartphonePair.second);
-                    try {
-                        data.dumpActAssistToFile(
-                            mainact.getApplicationContext(),
-                            actAssist);
-                    }catch (Exception e){
-                        e.printStackTrace();
-                    // TODO do sth if this fails
 
+                    // check if the android app is in push mode
+                    // if not the experiment is over or the app is marked dirty
+                    if (actAssist.getSmartphone().getSynchronized()) {
+                        actAssist.setActivities(listSmartphonePair.first);
+                        try {
+                            data.dumpActAssistToFile(
+                                    mainact.getApplicationContext(),
+                                    actAssist);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            // TODO do sth if this fails
+
+                        }
+                        if (!mainact.getSwitchChecked()) {
+                            mainact.setReloadSpinnerActivity((ArrayList<String>) actAssist.getActivities());
+                        }
+                        /** put a Smartphone with file to the
+                        * */
+                        actAssist.putSmartphoneAPI(activityFile.getActivityMultipart(mainact.getApplicationContext()))
+                        //actAssist.putSmartphoneAPI()
+                                .subscribe(new SingleObserver<Smartphone>() {
+                                    @Override
+                                    public void onSubscribe(@NonNull Disposable d) {
+
+                                    }
+
+                                    @Override
+                                    public void onSuccess(@NonNull Smartphone smartphone) {
+                                        System.out.println("asdf");
+                                    }
+
+                                    @Override
+                                    public void onError(@NonNull Throwable e) {
+                                        System.out.println("asdf");
+                                    }
+                                });
                     }
-                    mainact.setReloadSpinnerActivity((ArrayList<String>) actAssist.getActivities());
+                    else{
+                        actAssist.setActivities(listSmartphonePair.first);
+                        mainact.setReloadSpinnerActivity((ArrayList<String>) actAssist.getActivities());
+                        // TODO download activity file
+                    }
                 }
 
                 @Override

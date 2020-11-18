@@ -27,6 +27,9 @@ import io.reactivex.rxjava3.core.SingleObserver;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -177,6 +180,7 @@ public class ActAssistApi implements Serializable {
 //                        throwable -> controller.onFailure("GET smartphone failed")
 //                ));
     }
+
     public Single<Pair <List<Activity>, Smartphone >> getSmartphoneAndActivties(){
         ApiService apiService = retrofit.create(ApiService.class);
         Single <List<Activity>> actListSingle = apiService.getActivities();
@@ -195,33 +199,56 @@ public class ActAssistApi implements Serializable {
                 .observeOn(AndroidSchedulers.mainThread());
     }
 
-    public void putSmartphoneAPI() {
+    public Smartphone createNewSmartphone(String personUrl){
+        Smartphone sm = new Smartphone();
+        sm.setPerson(personUrl);
+        sm.setName("Moto G6");
+        sm.setSynchronized(true);
+        sm.setLogging(false);
+        return sm;
+    }
+
+    public Single<Pair <List<Activity>, Smartphone >> createSmartphoneAndGetActivties(Smartphone sm){
+        ApiService apiService = retrofit.create(ApiService.class);
+        Single <List<Activity>> actListSingle = apiService.getActivities();
+        Single <Smartphone> smSingle = apiService.createSmartphone(
+                sm.getName(),
+                sm.getPerson(),
+                sm.getLoggedActivity(),
+                sm.getSynchronized());
+
+        return actListSingle.zipWith(smSingle, Pair::new)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread());
+    }
+
+    public Single<Smartphone> putSmartphoneAPI() {
         // create an instance of the ApiService
         ApiService apiService = retrofit.create(ApiService.class);
 
         // make a request by calling the corresponding method
-        apiService.putSmartphone(this.smartphone.getId(), this.smartphone)
+        return apiService.putSmartphone(this.smartphone.getId(), this.smartphone)
                 .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new SingleObserver<Smartphone>() {
-                           @Override
-                           public void onSubscribe(@NonNull Disposable d) {
-                                //compositeDisposable.add(d);
-                           }
+                .observeOn(AndroidSchedulers.mainThread());
+                //.subscribe(new SingleObserver<Smartphone>() {
+              //           @Override
+              //           public void onSubscribe(@NonNull Disposable d) {
+              //                //compositeDisposable.add(d);
+              //           }
 
-                           @Override
-                           public void onSuccess(@NonNull Smartphone sm) {
-                               controller.onSuccess("successfully put smartphone");
-                           }
+              //           @Override
+              //           public void onSuccess(@NonNull Smartphone sm) {
+              //               controller.onSuccess("successfully put smartphone");
+              //           }
 
-                           @Override
-                           public void onError(@NonNull Throwable e) {
-                               controller.onFailure("PUT smartphone failed");
-                           }
-                       });
+              //           @Override
+              //           public void onError(@NonNull Throwable e) {
+              //               controller.onFailure("PUT smartphone failed");
+              //           }
+              //       });
     }
 
-    public void putSmartphoneAPI(File file) {
+    public Single<Smartphone> putSmartphoneAPI(MultipartBody.Part file) {
         //https://futurestud.io/tutorials/retrofit-2-how-to-upload-files-to-server
         /** puts a smartphone object
         */
@@ -229,10 +256,20 @@ public class ActAssistApi implements Serializable {
         ApiService apiService = retrofit.create(ApiService.class);
 
         // create request body instance from file
-
-        // make a request by calling the corresponding method
-        apiService.putSmartphone(this.smartphone.getId(), this.smartphone);
-        // TODO implement method
+        // TODO works for putSmartphone API
+        //String personUrl = "http://192.168.178.47:8000/api/v1/persons/1/?format=json";
+        //String personUrl = "http://localhost:8000/api/v1/persons/1/";
+        RequestBody name = RequestBody.create(MultipartBody.FORM, smartphone.getName());
+        RequestBody personUrl = RequestBody.create(MultipartBody.FORM, smartphone.getPerson());
+        //RequestBody loggedActivity = RequestBody.create(MultipartBody.FORM, smartphone.getLoggedActivity());
+       return apiService.putSmartphone(
+               smartphone.getId(),
+               name,
+               personUrl,
+               //loggedActivity,
+               file)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread());
     }
 
     public void getActivitiesAPI() {

@@ -100,7 +100,7 @@ public class MainActivity extends AppCompatActivity implements MySpinner.OnItemS
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setContentIntent(contentIntent);
-
+        builder.setOngoing(true);
         // publish notification
         NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
         notificationManager = NotificationManagerCompat.from(this);
@@ -237,7 +237,7 @@ public class MainActivity extends AppCompatActivity implements MySpinner.OnItemS
                 obj.put(ActAssistApi.SMARTPHONE_ID,
                         1);
                 obj.put(ActAssistApi.URL_PERSON,
-                        "/person/1");
+                        "persons/1/");
                 obj.put(ActAssistApi.USERNAME,
                         "admin");
                 obj.put(ActAssistApi.PASSWORD,

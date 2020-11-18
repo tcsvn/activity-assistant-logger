@@ -1,6 +1,7 @@
 package com.example.activity_assistant_logger;
 
 import android.content.Context;
+import android.os.FileUtils;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
@@ -18,6 +19,11 @@ import java.util.List;
 import java.util.Calendar;
 import java.util.Locale;
 import java.util.StringJoiner;
+
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
 
 public class ActivityFileHandler {
 
@@ -73,6 +79,30 @@ public class ActivityFileHandler {
     public boolean deleteActivityFile(Context appContext){
         this.isFirstWrite = true;
         return appContext.deleteFile(ACTIVITY_FILE_NAME);
+    }
+    public MultipartBody.Part getActivityMultipart(Context appContext){
+        /* creates a multi part file to put to the api
+        * */
+        MultipartBody.Part body = null;
+        try{
+            File file = new File(appContext.getFilesDir(), ACTIVITY_FILE_NAME);
+
+            if (!isFirstWrite(appContext)){
+               RequestBody requestFile =
+                       RequestBody.create(MediaType.parse("multipart/form-data"),file);
+               body = MultipartBody.Part.createFormData(
+                       "activity_file", file.getName(), requestFile);
+            }
+            else{
+                RequestBody attachmentEmpty = RequestBody.create(
+                        MediaType.parse("text/plain"), "");
+                body = MultipartBody.Part.createFormData(
+                        "activity_file", "", attachmentEmpty);
+            }
+        }catch (NullPointerException e){
+            e.printStackTrace();
+        }
+        return body;
     }
 
     public void createActivity(Context appContext, String new_activity) throws IOException {
