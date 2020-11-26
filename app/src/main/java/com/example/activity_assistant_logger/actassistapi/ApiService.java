@@ -35,10 +35,25 @@ public interface ApiService {
     );
 
     @DELETE("smartphones/{smartphone_id}/?format=json")
-    Single<Smartphone> delSmartphone(@Path("smartphone_id") int smartphoneId);
+    Single<ResponseBody> delSmartphone(@Path("smartphone_id") int smartphoneId);
 
     @GET("smartphones/{smartphone_id}/?format=json")
     Single<Smartphone> getSmartphone(@Path("smartphone_id") int smartphoneId);
+
+    @GET("persons/{personId}/?format=json")
+    Single<Person> getPerson(@Path("personId") int personId);
+
+    //https://stackoverflow.com/questions/44240759/how-to-upload-empty-file-with-retrofit-2
+    @Multipart
+    @PUT("persons/{personId}/?format=json")
+    Single<Person> putPerson(
+            @Path("personId") int personId,
+            @Part("name") RequestBody name,
+            @Part("hass_name") RequestBody person,
+            @Part("prediction") RequestBody logging,
+            @Part("smartphone") RequestBody smartphone,
+            @Part MultipartBody.Part file
+            );
 
     @PUT("smartphones/{smartphone_id}/?format=json")
     Single<Smartphone> putSmartphone(
@@ -46,28 +61,6 @@ public interface ApiService {
             @Body Smartphone smartphone
             );
 
-   //https://stackoverflow.com/questions/44240759/how-to-upload-empty-file-with-retrofit-2
-    @PUT("smartphones/{smartphone_id}/?format=json")
-    @Multipart
-    Single<Smartphone> putSmartphone(
-            @Path("smartphone_id") int smartphoneId,
-            @Part("name") RequestBody name,
-            @Part("person") RequestBody person,
-            @Part("logging") RequestBody logging,
-            @Part("synchronized") RequestBody _synchronized,
-            @Part MultipartBody.Part file
-            );
-    @PUT("smartphones/{smartphone_id}/?format=json")
-    @Multipart
-    Single<Smartphone> putSmartphone(
-            @Path("smartphone_id") int smartphoneId,
-            @Part("name") RequestBody name,
-            @Part("person") RequestBody person,
-            @Part("logging") RequestBody logging,
-            @Part("logged_activity") RequestBody loggedActivity,
-            @Part("synchronized") RequestBody _synchronized,
-            @Part MultipartBody.Part file
-            );
     //https://futurestud.io/tutorials/retrofit-2-how-to-download-files-from-server
     @GET
     Single <ResponseBody> downloadActivityFile(@Url String fileUrl);

@@ -25,9 +25,6 @@ public class Smartphone {
     @SerializedName("synchronized")
     @Expose
     private Boolean _synchronized;
-    @SerializedName("activity_file")
-    @Expose
-    private String activityFile;
 
     public Integer getId() {
         return id;
@@ -75,14 +72,6 @@ public class Smartphone {
 
     public void setSynchronized(Boolean _synchronized) {
         this._synchronized = _synchronized;
-    }
-
-    public String getActivityFile() {
-        return activityFile;
-    }
-
-    public void setActivityFile(String activityFile) {
-        this.activityFile = activityFile;
     }
 }
 

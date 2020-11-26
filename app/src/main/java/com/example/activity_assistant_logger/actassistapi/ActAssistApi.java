@@ -59,6 +59,7 @@ public class ActAssistApi implements Serializable {
     private List <Activity> activities;
     private ArrayList <String> activityNames;
     private String experimentRunning;
+    private String activityFileUrl;
     //private CompositeDisposable compDisp;
 
     public ActAssistApi(Controller controller, String url_api, String user_name, String password) {
@@ -101,6 +102,7 @@ public class ActAssistApi implements Serializable {
             jsonObject.put("url_api", url_api);
             jsonObject.put("smartphone_json", gson.toJson(smartphone));
             jsonObject.put("activity_list", activityNames);
+            jsonObject.put("activity_file_url", activityFileUrl);
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -114,6 +116,7 @@ public class ActAssistApi implements Serializable {
                 jsonObject.getString("user_name"),
                 jsonObject.getString("password")
         );
+        newApi.setActivityFileUrl(jsonObject.getString("activity_file_url"));
         newApi.setActivities((ArrayList<String>) activities);
         Gson gson = new GsonBuilder().create();
         try {
@@ -137,6 +140,12 @@ public class ActAssistApi implements Serializable {
         return activityNames;
     }
 
+    public String getActivityFileUrl(){
+        return this.activityFileUrl;
+    }
+    public void setActivityFileUrl(String url){
+        this.activityFileUrl = url;
+    }
     public void setSmartphone(Smartphone sm){
         this.smartphone = sm;
     }
@@ -157,6 +166,7 @@ public class ActAssistApi implements Serializable {
     public boolean isExperimentRunning(){
         return this.experimentRunning.equals(EXP_RUNNING);
     }
+
     public void setExperiment(String experimentState){
         if (experimentState.equals(EXP_PAUSED)
                 || experimentState.equals(EXP_NOT_RUNNING)
@@ -166,11 +176,11 @@ public class ActAssistApi implements Serializable {
     }
 
 // API request
-    public void getSmartphoneAPI() {
-        // create an instance of the ApiService
-        ApiService apiService = retrofit.create(ApiService.class);
-
-        // make a request by calling the corresponding method
+//    public void getSmartphoneAPI() {
+//        // create an instance of the ApiService
+//        ApiService apiService = retrofit.create(ApiService.class);
+//
+//        // make a request by calling the corresponding method
 //        compDisp.add(apiService.getSmartphone(this.smartphone_id))
 //                .doOnSuccess(sm -> smartphone = sm)
 //                .subscribeOn(Schedulers.io())
@@ -178,7 +188,7 @@ public class ActAssistApi implements Serializable {
 //                .subscribe(
 //                        throwable -> controller.onFailure("GET smartphone failed")
 //                ));
-    }
+//    }
 
     public Single<Pair <List<Activity>, Smartphone >> getSmartphoneAndActivties(){
         ApiService apiService = retrofit.create(ApiService.class);
@@ -232,47 +242,68 @@ public class ActAssistApi implements Serializable {
 //                .subscribeOn(Schedulers.io())
 //                .observeOn(AndroidSchedulers.mainThread());
 //    }
-    public Single<ResponseBody> downloadActivityFile(){
-        String url = smartphone.getActivityFile();
+    public Single<ResponseBody> downloadActivityFile(String url){
         ApiService apiService = retrofit.create(ApiService.class);
         return apiService.downloadActivityFile(url)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread());
     }
 
-    public Single<Smartphone> putSmartphoneAPI(MultipartBody.Part file) {
+    public int getPersonId(){
+        String [] url = smartphone.getPerson().split("/");
+        return Integer.parseInt(url[url.length-2]);
+    }
+
+    public Single<Person> getPerson(){
+        ApiService apiService = retrofit.create(ApiService.class);
+        return apiService.getPerson(getPersonId())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread());
+    }
+
+    public Single<Person> uploadActivityFile(Person person, MultipartBody.Part file){
         //https://futurestud.io/tutorials/retrofit-2-how-to-upload-files-to-server
-        /** puts a smartphone object
-        */
-        // create an instance of the ApiService
         ApiService apiService = retrofit.create(ApiService.class);
 
-        // get strings of true and false for logging and synchronized
-        String sm_logging = "false";
-        String sm_synchronized = "false";
-        if(smartphone.getLogging()){
-            sm_logging = "true";
+        String predicStr = "false";
+        if (person.getPrediction()){
+            predicStr = "true";
         }
-        if (smartphone.getSynchronized()){
-            sm_synchronized = "true";
-        }
-
         // create request body instance from file
-        RequestBody name = RequestBody.create(MultipartBody.FORM, smartphone.getName());
-        RequestBody personUrl = RequestBody.create(MultipartBody.FORM, smartphone.getPerson());
-        RequestBody logging = RequestBody.create(MultipartBody.FORM, sm_logging);
-        RequestBody _synchronized = RequestBody.create(MultipartBody.FORM, sm_synchronized);
-        Single <Smartphone> res = null;
-        try{
-            RequestBody loggedActivity = RequestBody.create(MultipartBody.FORM, smartphone.getLoggedActivity());
-            res = apiService.putSmartphone(smartphone.getId(), name, personUrl,
-               logging, loggedActivity,_synchronized, file);
-        }
-        catch (Exception e){
-            res = apiService.putSmartphone(smartphone.getId(), name, personUrl,
-                    logging, _synchronized, file);
-        }
-       return  res.subscribeOn(Schedulers.io())
+        RequestBody name = RequestBody.create(MultipartBody.FORM, person.getName());
+        RequestBody hass_name = RequestBody.create(MultipartBody.FORM, person.getHassName());
+        RequestBody prediction = RequestBody.create(MultipartBody.FORM, predicStr);
+        RequestBody smartphone = RequestBody.create(MultipartBody.FORM, person.getSmartphone());
+
+        return apiService.putPerson(person.getId(), name, hass_name, prediction, smartphone, file)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread());
+    }
+
+    public Single<ResponseBody> deleteSmartphoneAPI(Smartphone smartphone) {
+        /** delete a smartphone object
+        */
+        ApiService apiService = retrofit.create(ApiService.class);
+        return apiService.delSmartphone(smartphone.getId())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread());
+    }
+
+    public Single<Smartphone> getSmartphoneAPI() {
+        /** puts a smartphone object
+        */
+        ApiService apiService = retrofit.create(ApiService.class);
+        return apiService.getSmartphone(smartphone.getId())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread());
+    }
+
+    public Single<Smartphone> putSmartphoneAPI() {
+        /** puts a smartphone object
+        */
+        ApiService apiService = retrofit.create(ApiService.class);
+        return apiService.putSmartphone(smartphone.getId(), smartphone)
+                .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread());
     }
 
