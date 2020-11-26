@@ -34,8 +34,10 @@ public interface ApiService {
             @Field("synchronized") boolean _synchronized
     );
 
-    @DELETE("smartphones/{smartphone_id}/?format=json")
-    Single<ResponseBody> delSmartphone(@Path("smartphone_id") int smartphoneId);
+    @DELETE("smartphones/{smartphone_id}/")
+    Single<ResponseBody> delSmartphone(
+            @Path("smartphone_id") int smartphoneId
+            );
 
     @GET("smartphones/{smartphone_id}/?format=json")
     Single<Smartphone> getSmartphone(@Path("smartphone_id") int smartphoneId);

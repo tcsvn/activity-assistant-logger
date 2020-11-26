@@ -324,7 +324,25 @@ public class Controller {
 
                             @Override
                             public void onError(@NonNull Throwable e) {
-                                mainact.createToast("couldn't delete smartphone on api");
+                                // TODO this is a dirty hack to respond to the
+                                // inadequate 204 No Content response from server after deleting
+                                // the object which results in an error but should have been a success
+                                if (e instanceof java.util.NoSuchElementException){
+                                    deviceState = DEVICE_STATUS_UNCONFIGURED;
+                                    mainact.setServerStatus(SERVER_STATUS_UNCONFIGURED);
+                                    mainact.setDeviceStatus(DEVICE_STATUS_UNCONFIGURED);
+                                    mainact.setSwitchLogging(false);
+                                    mainact.resetSpinnerLists();
+                                    actAssist = null;
+
+                                    // wipe data
+                                    data.deleteConfigFile(mainact.getApplicationContext());
+                                    activityFile.deleteActivityFile(mainact.getApplicationContext());
+                                    mainact.createToast("deleted everything");
+                                }
+                                else {
+                                    mainact.createToast("BUG: couldn't delete smartphone on api");
+                                }
                             }
                         }
                 );
@@ -332,7 +350,7 @@ public class Controller {
 
             @Override
             public void onError(@NonNull Throwable e) {
-                mainact.createToast("no connection to server. Try again later");
+                mainact.createToast("no connection to server. Try deleting again later.");
             }
         });
 
