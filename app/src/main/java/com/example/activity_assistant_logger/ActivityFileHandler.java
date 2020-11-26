@@ -101,7 +101,7 @@ public class ActivityFileHandler {
         }
 
         outputStream.flush();
-
+        this.isFirstWrite = false;
         return true;
         } catch (IOException e) {
             return false;

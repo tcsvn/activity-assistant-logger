@@ -116,7 +116,11 @@ public class ActAssistApi implements Serializable {
                 jsonObject.getString("user_name"),
                 jsonObject.getString("password")
         );
-        newApi.setActivityFileUrl(jsonObject.getString("activity_file_url"));
+        try {
+            newApi.setActivityFileUrl(jsonObject.getString("activity_file_url"));
+        }catch (JSONException e){
+            newApi.setActivityFileUrl("");
+        }
         newApi.setActivities((ArrayList<String>) activities);
         Gson gson = new GsonBuilder().create();
         try {
@@ -148,6 +152,21 @@ public class ActAssistApi implements Serializable {
     }
     public void setSmartphone(Smartphone sm){
         this.smartphone = sm;
+    }
+
+    public String getActivityUrl(String currentActivity, List <Activity> acts){
+        String actUrl = "";
+                            for (int i = 0; i < acts.size(); i++){
+                                if(acts.get(i).getName().equals(currentActivity)){
+                                    actUrl = createActivityUrl(acts.get(i));
+                                    break;
+                                }
+                            }
+                            return actUrl;
+    }
+
+    public String createActivityUrl(Activity act){
+        return url_api + "activities/" + act.getId() + "/";
     }
 
     public void setActivities(List<Activity> activities){
@@ -212,7 +231,7 @@ public class ActAssistApi implements Serializable {
         Smartphone sm = new Smartphone();
         sm.setPerson(personUrl);
         sm.setName("Moto G6");
-        sm.setSynchronized(true);
+        sm.setSynchronized(false);
         sm.setLogging(false);
         return sm;
     }
@@ -250,8 +269,13 @@ public class ActAssistApi implements Serializable {
     }
 
     public int getPersonId(){
+        // TODO hacky way
         String [] url = smartphone.getPerson().split("/");
-        return Integer.parseInt(url[url.length-2]);
+        try {
+            return Integer.parseInt(url[url.length - 2]);
+        }catch (Exception e){
+            return Integer.parseInt(url[url.length - 1]);
+        }
     }
 
     public Single<Person> getPerson(){
@@ -302,6 +326,8 @@ public class ActAssistApi implements Serializable {
         /** puts a smartphone object
         */
         ApiService apiService = retrofit.create(ApiService.class);
+        smartphone.setLogging(controller.getLogging());
+        //smartphone.setLoggedActivity(controller.getLoggedActivity());
         return apiService.putSmartphone(smartphone.getId(), smartphone)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread());

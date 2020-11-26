@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -82,7 +83,6 @@ public class Controller {
             e.printStackTrace();
             resetConfig();
         }
-
     }
 
     private void resetConfig() {
@@ -107,6 +107,14 @@ public class Controller {
     public String getDeviceActivityName() {
         return "debug";
         //return actAssist.getDeviceActivityName();
+    }
+
+    public boolean getLogging(){
+        return mainact.getSwitchChecked();
+    }
+
+    public String getLoggedActivity(){
+        return currentActivity;
     }
 
     //___HTTP__Callbacks -------------------------------------------------------------------------------
@@ -148,7 +156,6 @@ public class Controller {
                     //actAssist.setSmartphoneLogging(true);
                     mainact.createNotification();
                     if (actAssist.isExperimentConducted()) {
-                        actAssist.putSmartphoneAPI();
                         try {
                             String selectedActivity = mainact.getSelectedActivity();
                             activityFile.createActivity(
@@ -160,12 +167,44 @@ public class Controller {
                             Toast.makeText(mainact, "sth went wrong writing activity file",
                                     Toast.LENGTH_SHORT).show();
                         }
+                        actAssist.getSmartphoneAndActivties()
+                            .subscribe(new SingleObserver<Pair<List<Activity>, Smartphone>>(){
+                                @Override
+                                public void onSubscribe(@NonNull Disposable d) {
+
+                                }
+
+                                @Override
+                                public void onSuccess(@NonNull Pair<List<Activity>, Smartphone> listSmartphonePair) {
+                                    actAssist.setSmartphone(listSmartphonePair.second);
+                                    actAssist.getSmartphone().setLogging(true);
+                                    actAssist.getSmartphone().setLoggedActivity(
+                                            actAssist.getActivityUrl(currentActivity, listSmartphonePair.first));
+                                    actAssist.putSmartphoneAPI().subscribe(new SingleObserver<Smartphone>() {
+                                        @Override
+                                        public void onSubscribe(@NonNull Disposable d) {
+
+                                        }
+
+                                        @Override
+                                        public void onSuccess(@NonNull Smartphone smartphone) {
+                                            actAssist.setSmartphone(smartphone);
+                                        }
+
+                                        @Override
+                                        public void onError(@NonNull Throwable e) {
+
+                                        }
+                                    });
+                                }
+
+                                @Override
+                                public void onError(@NonNull Throwable e) {}
+                            });
                     }
                 } else {
-                    //actAssist.setSmartphoneLogging(false);
                     mainact.removeNotification();
                     if (actAssist.isExperimentConducted()) {
-                        actAssist.putSmartphoneAPI();
                         try {
                             activityFile.finishActivity(
                                     mainact.getApplicationContext(),
@@ -175,11 +214,51 @@ public class Controller {
                             Toast.makeText(mainact, "sth went wrong writing activity file",
                                     Toast.LENGTH_SHORT).show();
                         }
+                        // update internal representation of smartphone
+                        actAssist.getSmartphone().setLogging(false);
+                        actAssist.getSmartphone().setLoggedActivity("");
+
+                        // update external representation of smartphone
+                        actAssist.getSmartphoneAPI().subscribe(new SingleObserver<Smartphone>() {
+                            @Override
+                            public void onSubscribe(@NonNull Disposable d) {
+
+                            }
+
+                            @Override
+                            public void onSuccess(@NonNull Smartphone smartphone) {
+                                    actAssist.setSmartphone(smartphone);
+                                    actAssist.getSmartphone().setLogging(false);
+                                    actAssist.getSmartphone().setLoggedActivity("");
+                                    actAssist.putSmartphoneAPI().subscribe(new SingleObserver<Smartphone>() {
+                                        @Override
+                                        public void onSubscribe(@NonNull Disposable d) {
+
+                                        }
+
+                                        @Override
+                                        public void onSuccess(@NonNull Smartphone smartphone) {
+                                            actAssist.setSmartphone(smartphone);
+                                        }
+
+                                        @Override
+                                        public void onError(@NonNull Throwable e) {
+
+                                        }
+                                    });
+                            }
+
+                            @Override
+                            public void onError(@NonNull Throwable e) {
+
+                            }
+                        });
                     }
                 }
             }
         } else {
             mainact.setSwitchLogging(false);
+            mainact.createToast("smartphone not synchronized! can't log");
         }
     }
 
@@ -202,17 +281,13 @@ public class Controller {
 
             // in the decoded message there is a smartphone url present
             // if already an instance exists
-            boolean smAlreadyCreated = false;
+            boolean actFileAlreadyCreated = false;
             try {
-                String tmp = jsonObject.getString("smartphone_url");
-                smAlreadyCreated = true;
+                String tmp = jsonObject.getString("activity_file_url");
+                actFileAlreadyCreated = true;
             } catch (Exception e) {
-                smAlreadyCreated = false;
+                actFileAlreadyCreated = false;
             }
-            if (smAlreadyCreated) {
-                // TODO implement
-                //actAssist.getSmartphoneAndActivties()
-            } else {
                 Smartphone sm = actAssist.createNewSmartphone(
                         urlApi +
                                 jsonObject.getString(ActAssistApi.URL_PERSON));
@@ -240,6 +315,65 @@ public class Controller {
                                 mainact.setServerStatus(SERVER_STATUS_ONLINE);
                                 deviceState = DEVICE_STATUS_REGISTERED;
                                 mainact.setDeviceStatus(DEVICE_STATUS_REGISTERED);
+                                actAssist.getPerson().subscribe(new SingleObserver<Person>() {
+                                    @Override
+                                    public void onSubscribe(@NonNull Disposable d) {
+
+                                    }
+
+                                    @Override
+                                    public void onSuccess(@NonNull Person person) {
+                                        actAssist.setActivityFileUrl(person.getActivityFile());
+                                        actAssist.getSmartphone().setSynchronized(true);
+                                        actAssist.putSmartphoneAPI().subscribe(new SingleObserver<Smartphone>() {
+                                            @Override
+                                            public void onSubscribe(@NonNull Disposable d) {
+
+                                            }
+
+                                            @Override
+                                            public void onSuccess(@NonNull Smartphone smartphone) {
+                                                actAssist.setSmartphone(smartphone);
+                                            }
+
+                                            @Override
+                                            public void onError(@NonNull Throwable e) {
+
+                                            }
+                                        });
+                                        try {
+                                            // check if there is an activity file on server
+                                            person.getActivityFile().equals("");
+                                            // than download it
+                                            actAssist.downloadActivityFile(person.getActivityFile()).subscribe(new SingleObserver<ResponseBody>() {
+                                                @Override
+                                                public void onSubscribe(@NonNull Disposable d) {
+
+                                                }
+
+                                                @Override
+                                                public void onSuccess(@NonNull ResponseBody responseBody) {
+                                                    try {
+                                                        activityFile.replaceActivityFile(mainact.getApplicationContext(), responseBody);
+                                                    } catch (IOException e) {
+                                                        mainact.createToast("successfully downloaded activity file but couldn't save");
+                                                    }
+                                                }
+
+                                                @Override
+                                                public void onError(@NonNull Throwable e) {
+                                                    System.out.println("asdf");
+                                                }
+                                            });
+                                        }catch (NullPointerException e){}
+                                    }
+
+                                    @Override
+                                    public void onError(@NonNull Throwable e) {
+                                        System.out.println("asdf");
+                                    }
+                                });
+
                             }
 
                             @Override
@@ -249,7 +383,6 @@ public class Controller {
                                 mainact.setDeviceStatus(DEVICE_STATUS_UNCONFIGURED);
                             }
                         });
-            }
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -269,6 +402,40 @@ public class Controller {
             } catch (Exception e) {
                 mainact.createToast("sth went wrong writing activity file");
             }
+            actAssist.getSmartphoneAndActivties()
+                            .subscribe(new SingleObserver<Pair<List<Activity>, Smartphone>>(){
+                                @Override
+                                public void onSubscribe(@NonNull Disposable d) {
+
+                                }
+
+                                @Override
+                                public void onSuccess(@NonNull Pair<List<Activity>, Smartphone> listSmartphonePair) {
+                                    actAssist.setSmartphone(listSmartphonePair.second);
+                                    actAssist.getSmartphone().setLogging(true);
+                                    actAssist.getSmartphone().setLoggedActivity(
+                                            actAssist.getActivityUrl(currentActivity, listSmartphonePair.first));
+                                    actAssist.putSmartphoneAPI().subscribe(new SingleObserver<Smartphone>() {
+                                        @Override
+                                        public void onSubscribe(@NonNull Disposable d) {
+
+                                        }
+
+                                        @Override
+                                        public void onSuccess(@NonNull Smartphone smartphone) {
+                                            actAssist.setSmartphone(smartphone);
+                                        }
+
+                                        @Override
+                                        public void onError(@NonNull Throwable e) {
+
+                                        }
+                                    });
+                                }
+
+                                @Override
+                                public void onError(@NonNull Throwable e) {}
+                            });
         }
     }
 
@@ -362,8 +529,8 @@ public class Controller {
          * if it is in push mode pushes smartphone and activity file to server
          * if it is not synchronized delete local activity file and
          * request new activities and pull activity file from server
-         * */ // TODO only allow for synchronzining when no one is logging
-        if (this.deviceState.equals(DEVICE_STATUS_REGISTERED)) {
+         * */
+        if (this.deviceState.equals(DEVICE_STATUS_REGISTERED) && !mainact.getSwitchChecked()) {
             actAssist.getSmartphoneAndActivties()
                     .subscribe(new SingleObserver<Pair<List<Activity>, Smartphone>>() {
                         @Override
@@ -531,6 +698,11 @@ public class Controller {
                             mainact.createToast("couldn't connect to server");
                         }
                     });
+        }
+        else{
+            if (mainact.getSwitchChecked()){
+                mainact.createToast("sync is not allowed while logging");
+            }
         }
     }
 }
