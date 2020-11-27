@@ -12,8 +12,17 @@
 
 ## Installation
 
-The APK can be downloaded via [Play Store](https://google.play.com) or [F-Droid](https://google.play.com). To download the latest release scan the following code
+The APK can be downloaded via [Play Store](https://google.play.com), [F-Droid](https://google.play.com) or for the latest release by scanning the qrcode:
 
+<p align="center">
+  [<img src="https://play.google.com/intl/en_us/badges/images/generic/en_badge_web_generic.png" 
+      alt="Download from Google Play" 
+      height="80">](https://play.google.com/)
+  [<img src="https://f-droid.org/badge/get-it-on.png"
+      alt="Get it on F-Droid"
+      height="80">](https://f-droid.org/)
+  <img width="80%"  src=media/release-v.0.0.1?raw=true>
+</p>
 _For a guide on how to use please refer to Activity-assistants documentation (to come)_
 
 ## Features
