@@ -1,10 +1,10 @@
-# Activity-assistant Android logger
-> Companion app for annotating activity-assisstants data with Activities of daily living.
+# Activity-assistant Android app
+> Android client for [Activity-Assistant](https://github.com/tcsvn/activity-assistant). Easily annotate your data with Activities of daily living.
 
 ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/tcsvn/activity-assistant/Publish%20dev?style=flat-square)
+![Github Release](https://img.shields.io/github/v/release/tcsvn/activity-assistant-logger?include_prereleases&style=flat-square)
 ![License](https://img.shields.io/pypi/l/pyadlml?style=flat-square)
 
-Activities of Daily living (ADLs) e.g cooking, working, sleeping and device readings are recorded by smart home inhabitants. The goal is to predict inhabitants activities using device readings. Activity-Assistant is a platform that streamlines the process of data collection. The activitiy-assistant android logger is used to label device readings with current activities.
 
 <p align="center">
   <img width="80%"  src=media/showreal.gif?raw=true>
@@ -14,7 +14,7 @@ Activities of Daily living (ADLs) e.g cooking, working, sleeping and device read
 
 The APK can be downloaded via [Play Store](https://google.play.com) or [F-Droid](https://google.play.com). To download the latest release scan the following code
 
-_For a guide on how to use please refer to the Activity-assistants documentation (to come)_
+_For a guide on how to use please refer to Activity-assistants documentation (to come)_
 
 ## Features
   - [x] Local record of ADLs
@@ -29,12 +29,16 @@ _For a guide on how to use please refer to the Activity-assistants documentation
 5. Create a new Pull Request
 
 ## Related projects
-  - [activity-assistant](https://github.com/tcsvn/act_assist_logger) - The platform where data is aggregated
-  - [pyadlml](https://github.com/tcsvn/pyadlml) - A python library for data exploration. Data collected by Activity-assistant can be imported with `load_act_assist(path_to_folder)`
-  - [homeassistant](https://github.com/todolink) - Homeautomation platform
+  - [activity-assistant](https://github.com/tcsvn/act_assist_logger) - The data aggregation platform
+  - [pyadlml](https://github.com/tcsvn/pyadlml) - A python library containing data exploration methods for ADL datasets.
+  - [homeassistant](https://www.home-assistant.io/) - Homeautomation platform
   
 ## Support 
   - Todo buy me a coffee batch
   
 ## License
 MIT  © [tcsvn](http://deadlink)
+
+## Remarks 
+
+Google Play and the Google Play logo are trademarks of Google Inc.
