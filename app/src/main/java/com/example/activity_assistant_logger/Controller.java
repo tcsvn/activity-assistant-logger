@@ -54,7 +54,9 @@ public class Controller {
     private MainActivity mainact;
 
 
-    public Controller(MainActivity mainact) {
+    public Controller(MainActivity mainact, Intent intent) {
+        /** intent is
+         * */
         this.mainact = mainact;
         this.data = new ConfigHandler();
         this.activityFile = new ActivityFileHandler(mainact.getApplicationContext());
@@ -63,6 +65,19 @@ public class Controller {
             loadFromConfig();
         } else {
             resetConfig();
+        }
+        if (mainact.isStartedFromNotification(intent)){
+            openedFromNotification(intent.getStringExtra("currentActivity"));
+        }
+        else{
+            if (activityFile.activityFileExists(mainact.getApplicationContext())){
+                // if there is a line from logging before. remove that line
+                try {
+                    activityFile.cleanupActivityFile(mainact.getApplicationContext());
+                }catch (IOException e){
+                    mainact.createToast("sth. went wrong cleaning up activity file");
+                }
+            }
         }
     }
 
@@ -134,24 +149,26 @@ public class Controller {
     }
 
     //__GUI Callbacks__---------------------------------------------------------------------------------
-    public void onCreate() {
-        // executed when main activity starts
-        //mainact.resetSpinnerLists();
-        // START DEBUG
-        // code to manually delete config file
-        //File dir = getFilesDir();
-        //File file = new File(dir, CONNECTION_FILE_NAME);
-        //boolean deleted = file.delete();
-        //System.exit(0);
-        // END DEBUG
+
+    public void openedFromNotification(String currentActivity){
+        /** tries to reset the state of the app to before it was minimized
+         *
+         */
+        mainact.createToast("asdf" + currentActivity);
+        mainact.setSwitchLogging(true);
+        this.currentActivity = currentActivity;
+        mainact.setSpinnerActivity((ArrayList<String>) actAssist.getActivities(), currentActivity);
     }
 
     public void switchLoggingToggled(boolean turnedOn) {
         /** log activity to file if an experiment is conducted
          *
          */
-        if (deviceState == DEVICE_STATUS_REGISTERED) {
-            if (actAssist.getSmartphone().getSynchronized()) {
+        String tmp = DEVICE_STATUS_REGISTERED;
+        String tmp2 = deviceState;
+
+        //if (deviceState.equals(DEVICE_STATUS_REGISTERED)) {
+        if (tmp.equals(tmp2)) {
                 if (turnedOn) {
                     //actAssist.setSmartphoneLogging(true);
                     mainact.createNotification();
@@ -255,10 +272,9 @@ public class Controller {
                         });
                     }
                 }
-            }
         } else {
             mainact.setSwitchLogging(false);
-            mainact.createToast("smartphone not synchronized! can't log");
+            mainact.createToast("first register device to log");
         }
     }
 
@@ -402,6 +418,10 @@ public class Controller {
             } catch (Exception e) {
                 mainact.createToast("sth went wrong writing activity file");
             }
+            // update the notification with the current activity
+            mainact.removeNotification();
+            mainact.createNotification();
+
             actAssist.getSmartphoneAndActivties()
                             .subscribe(new SingleObserver<Pair<List<Activity>, Smartphone>>(){
                                 @Override

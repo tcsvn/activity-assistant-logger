@@ -29,7 +29,7 @@ import okhttp3.ResponseBody;
 public class ActivityFileHandler {
 
     final private String ACTIVITY_FILE_NAME="activity.csv";
-    final private String DATE_FORMAT="dd-MM-yyy HH:mm:ss";
+    final private String DATE_FORMAT="dd-MM-yyy HH:mm:ss"; // TODO include milliseconds
     final private SimpleDateFormat dataFormat;
     private boolean isFirstWrite;
 
@@ -42,6 +42,42 @@ public class ActivityFileHandler {
         return this.dataFormat.format(
                 Calendar.getInstance().getTime()
         );
+    }
+
+    public boolean activityFileExists(Context appContext){
+        File file = new File(appContext.getFilesDir(), ACTIVITY_FILE_NAME);
+        return file.exists();
+    }
+
+    public void cleanupActivityFile(Context appContext) throws IOException {
+        try {
+            List<String[]> cur_file = new CSVFile(appContext.openFileInput(ACTIVITY_FILE_NAME)).read();
+            String [] lastLine = cur_file.get(cur_file.size() - 1);
+            if (lastLine.length != 3 && cur_file.size() > 1){
+                // if last line wasn't finished than exclude last line
+                StringBuffer inputBuffer = new StringBuffer();
+                for (int i = 0; i < cur_file.size() - 1; i++) {
+                    StringJoiner joiner = new StringJoiner(",");
+                    String tmp = joiner.add(cur_file.get(i)[0])
+                            .add(cur_file.get(i)[1])
+                            .add(cur_file.get(i)[2]).toString();
+                    // for the last line don't add a \n
+                    if (i < cur_file.size()-2) {
+                        inputBuffer.append(tmp + "\n");
+                    }
+                    else{
+                        inputBuffer.append(tmp);
+                    }
+
+
+                }
+                FileOutputStream os = appContext.openFileOutput(ACTIVITY_FILE_NAME, Context.MODE_PRIVATE);
+                os.write(inputBuffer.toString().getBytes());
+                os.close();
+            }
+        }
+        catch(FileNotFoundException e){
+        }
     }
 
     public boolean isFirstWrite(Context appContext){
@@ -120,13 +156,13 @@ public class ActivityFileHandler {
         this.isFirstWrite = true;
         return appContext.deleteFile(ACTIVITY_FILE_NAME);
     }
+
     public MultipartBody.Part getActivityMultipart(Context appContext){
         /* creates a multi part file to put to the api
         * */
         MultipartBody.Part body = null;
         try{
             File file = new File(appContext.getFilesDir(), ACTIVITY_FILE_NAME);
-
             if (!isFirstWrite(appContext)){
                RequestBody requestFile =
                        RequestBody.create(MediaType.parse("multipart/form-data"),file);

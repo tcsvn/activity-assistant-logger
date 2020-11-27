@@ -31,6 +31,7 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 
 import com.example.activity_assistant_logger.actassistapi.ActAssistApi;
+import com.google.gson.JsonObject;
 
 import static android.Manifest.permission.INTERNET;
 import static com.example.activity_assistant_logger.Controller.SERVER_STATUS_ONLINE;
@@ -41,6 +42,7 @@ public class MainActivity extends AppCompatActivity implements MySpinner.OnItemS
     TextView deviceStatus;
     TextView serverStatus;
     MySpinner mySpinner_activity;
+    private final Boolean DEBUG = true;
     private Switch switch_logging;
     private String device_status;
     private String CHANNEL_ID = "0";
@@ -68,8 +70,7 @@ public class MainActivity extends AppCompatActivity implements MySpinner.OnItemS
 
         createNotificationChannel();
         this.requestPermissions();
-        controller = new Controller(MainActivity.this);
-        controller.onCreate();
+        controller = new Controller(MainActivity.this, getIntent());
     }
 
     private void requestPermissions(){
@@ -89,11 +90,12 @@ public class MainActivity extends AppCompatActivity implements MySpinner.OnItemS
     public void createNotification(){
         // define click behaviour
         Intent intent = new Intent(this, MainActivity.class);
+        intent.putExtra("currentActivity", getSelectedActivity());
         PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
-                intent, PendingIntent.FLAG_IMMUTABLE);
-
+                intent, PendingIntent.FLAG_UPDATE_CURRENT);
+                //intent, PendingIntent.FLAG_IMMUTABLE);
         // define notification
-        String temp_text = getSelectedActivity() + getString(R.string.notification_text);
+        String temp_text = getSelectedActivity() + " " + getString(R.string.notification_text);
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_baseline_account_circle_24)
                 .setContentTitle(getString(R.string.notification_title))
@@ -129,6 +131,30 @@ public class MainActivity extends AppCompatActivity implements MySpinner.OnItemS
 
     public void createToast(String text){
         Toast.makeText(this, text, Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onNewIntent(Intent intent){
+        /** is called for every opening of the main activity
+         *  is used for getting a notification
+         */
+        super.onNewIntent(intent);
+        try{
+            if (isStartedFromNotification(intent)) {
+                controller.openedFromNotification(
+                        intent.getStringExtra("currentActivity"));
+            }
+        }catch (Exception e){
+
+        }
+    }
+
+    public boolean isStartedFromNotification(Intent intent){
+        /** returns whether the main acitivity was started by pressing
+         * on a new notification
+         * */
+        String curAct = intent.getStringExtra("currentActivity");
+        return curAct != null;
     }
 
 //__GETTER/SETTER----------------------------------------------------------------------------------
@@ -205,6 +231,18 @@ public class MainActivity extends AppCompatActivity implements MySpinner.OnItemS
         //}
     }
 
+    public void setSpinnerActivity(ArrayList<String> activityArray, String currentActivity){
+          ArrayAdapter<String> adapter = new ArrayAdapter<String>(
+                this,
+                android.R.layout.simple_spinner_item,
+                  activityArray
+        );
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        mySpinner_activity.setAdapter(adapter);
+        int pos = adapter.getPosition(currentActivity);
+        mySpinner_activity.programmaticallySetPosition(pos);
+    }
+
     public boolean containsElement(ArrayAdapter<String> adapter, String element){
         for(int i =0; i < adapter.getCount(); i++){
             if (adapter.getItem(i).equals(element)){
@@ -233,25 +271,29 @@ public class MainActivity extends AppCompatActivity implements MySpinner.OnItemS
     public void btnScanQrCode(View view) {
         String btntext = (String) qrcode_scan.getText();
         if( btntext.equals("scan")){
-            //controller.onBtnScanQRCode();
-            // DEBUG FROM HERE
-            JSONObject obj = new JSONObject();
-            try {
-                obj.put(ActAssistApi.URL_API,
-                        "http://192.168.178.47:8000/api/v1/");
-                obj.put(ActAssistApi.SMARTPHONE_ID,
-                        1);
-                obj.put(ActAssistApi.URL_PERSON,
-                        "persons/1/");
-                obj.put(ActAssistApi.USERNAME,
-                        "admin");
-                obj.put(ActAssistApi.PASSWORD,
-                        "asdf");
-            } catch (JSONException e) {
-                e.printStackTrace();
+            if (!DEBUG){
+                controller.onBtnScanQRCode();
             }
-            controller.receivedDataFromQRCode(obj);
-            // DEBUG END
+            else {
+                // DEBUG FROM HERE
+                JSONObject obj = new JSONObject();
+                try {
+                    obj.put(ActAssistApi.URL_API,
+                            "http://192.168.178.47:8000/api/v1/");
+                    obj.put(ActAssistApi.SMARTPHONE_ID,
+                            1);
+                    obj.put(ActAssistApi.URL_PERSON,
+                            "persons/1/");
+                    obj.put(ActAssistApi.USERNAME,
+                            "admin");
+                    obj.put(ActAssistApi.PASSWORD,
+                            "asdf");
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                controller.receivedDataFromQRCode(obj);
+                // DEBUG END
+            }
         }
         else{
             controller.onBtnDecouple();
@@ -265,24 +307,28 @@ public class MainActivity extends AppCompatActivity implements MySpinner.OnItemS
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data){
         /** The BarcodeCaptureActivity scanned sth. leads to calling this method
+         * also the ActivityFile upon return leads to calling this but nothing is done as
+         * the Intent data is null
          * */
-        if(requestCode==0){
-            if (resultCode == CommonStatusCodes.SUCCESS) {
-                if(data != null){
-                    Barcode barcode = data.getParcelableExtra("barcode");
-                    String connectionInformation = barcode.displayValue;
-                    try {
-                        controller.receivedDataFromQRCode(
-                                new JSONObject(connectionInformation)
-                        );
+         if (resultCode == CommonStatusCodes.SUCCESS && data!= null) {
+             try {
+                 // case of the activity with intent
+                 Barcode barcode = data.getParcelableExtra("barcode");
+                 String connectionInformation = barcode.displayValue;
+                 try {
+                     controller.receivedDataFromQRCode(
+                             new JSONObject(connectionInformation)
+                     );
 
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }
-        else {
+                 } catch (JSONException e) {
+                     e.printStackTrace();
+                 }
+             }catch (Exception e){
+                String currentActivity = data.getStringExtra("currentActivity");
+                createToast("got forom notification: " + currentActivity);
+             }
+         }
+         else {
             super.onActivityResult(requestCode, resultCode, data);
         }
     }
