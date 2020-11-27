@@ -2,6 +2,7 @@ package com.example.activity_assistant_logger;
 
 import android.content.Context;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.ListIterator;
 
 import com.example.activity_assistant_logger.actassistapi.ActAssistApi;
+import com.google.gson.JsonArray;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -43,18 +45,28 @@ public class ConfigHandler {
     public ActAssistApi loadActAssistFromFile(Context appContext, Controller con) throws JSONException, IOException, ClassNotFoundException {
         String dump = readConnectionDataFile(appContext);
         JSONObject obj = new JSONObject(dump);
-        String act_list = obj.getString("activity_list");
-        String [] acts = act_list.split(",");
+        List<String> tmp = strList2List(obj.getString("activity_list"));
+        ActAssistApi actAssist = ActAssistApi.serializeFromJSON(con, obj, tmp);
+        actAssist.initRetrofit();
+        return actAssist;
+    }
+
+    private List<String> strList2List(String lst){
+        // given a string representation "[act1, act2, act3]" create a list
+        String [] acts = lst.split(",");
         acts[0] = acts[0].substring(1);
         acts[acts.length-1] = acts[acts.length-1].substring(0,acts[acts.length-1].length()-1);
         List<String> tmp = new ArrayList<String>();
 
         for (int i = 0; i < acts.length; i++){
-            tmp.add(acts[i]);
+            if (i > 0){
+                tmp.add (acts[i].substring(1));
+            }
+            else {
+                tmp.add(acts[i]);
+            }
         }
-        ActAssistApi actAssist = ActAssistApi.serializeFromJSON(con, obj, tmp);
-        actAssist.initRetrofit();
-        return actAssist;
+        return tmp;
     }
 
     public void dumpActAssistToFile(Context appContext, ActAssistApi actAssist) throws IOException, JSONException {
