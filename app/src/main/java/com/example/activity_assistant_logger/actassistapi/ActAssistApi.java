@@ -152,7 +152,10 @@ public class ActAssistApi implements Serializable {
         this.activityFileUrl = url;
     }
     public void setSmartphone(Smartphone sm){
-        this.smartphone = sm;
+        smartphone = sm;
+        smartphone.setName(controller.getDeviceName());
+        smartphone.setLogging(controller.getLogging());
+        smartphone.setLoggedActivity(controller.getLoggedActivity());
     }
 
     public String getActivityUrl(String currentActivity, List <Activity> acts){
@@ -209,6 +212,18 @@ public class ActAssistApi implements Serializable {
 //                        throwable -> controller.onFailure("GET smartphone failed")
 //                ));
 //    }
+    public Single<Pair <List<Activity>, Smartphone >> getSmartphonePersonAndActivties(){
+        ApiService apiService = retrofit.create(ApiService.class);
+        Single <List<Activity>> actListSingle = apiService.getActivities();
+        Single <Smartphone> smSingle = apiService.getSmartphone(smartphone.getId());
+        return actListSingle.zipWith(smSingle, Pair::new)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread());
+    }
+
+    public Retrofit getRetrofit() {
+        return retrofit;
+    }
 
     public Single<Pair <List<Activity>, Smartphone >> getSmartphoneAndActivties(){
         ApiService apiService = retrofit.create(ApiService.class);
@@ -231,7 +246,7 @@ public class ActAssistApi implements Serializable {
     public Smartphone createNewSmartphone(String personUrl){
         Smartphone sm = new Smartphone();
         sm.setPerson(personUrl);
-        sm.setName("Moto G6");
+        sm.setName(controller.getDeviceName());
         sm.setSynchronized(false);
         sm.setLogging(false);
         return sm;
@@ -328,7 +343,9 @@ public class ActAssistApi implements Serializable {
         */
         ApiService apiService = retrofit.create(ApiService.class);
         smartphone.setLogging(controller.getLogging());
-        //smartphone.setLoggedActivity(controller.getLoggedActivity());
+        if (controller.getLoggedActivity() == null){
+            smartphone.setLoggedActivity("");
+        }
         return apiService.putSmartphone(smartphone.getId(), smartphone)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread());
