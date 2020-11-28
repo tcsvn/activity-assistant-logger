@@ -1,5 +1,5 @@
-# Activity-assistant Android app
-> Android client for [Activity-Assistant](https://github.com/tcsvn/activity-assistant). Easily annotate your data with Activities of daily living.
+# activity-assistant Android app
+> Android client for [activity-assistant](https://github.com/tcsvn/activity-assistant). Easily annotate smart home data with your Activities of daily living.
 
 ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/tcsvn/activity-assistant/Publish%20dev?style=flat-square)
 ![Github Release](https://img.shields.io/github/v/release/tcsvn/activity-assistant-logger?include_prereleases&style=flat-square)
@@ -12,7 +12,7 @@
 
 ## Installation
 
-The APK can be downloaded via [Play Store](https://google.play.com), [F-Droid](https://google.play.com) or for the latest release by scanning the qrcode:
+Get the app via [Play Store](https://google.play.com) or [F-Droid](https://google.play.com) (to come). The latest release can be installed by scanning the qrcode, downloading and installing the app with your smartphone.
 
 <p align="center">
   <img src="https://f-droid.org/badge/get-it-on.png"
@@ -26,8 +26,9 @@ The APK can be downloaded via [Play Store](https://google.play.com), [F-Droid](h
 _For a guide on how to use please refer to Activity-assistants documentation (to come)_
 
 ## Features
-  - [x] Local record of ADLs
-  - [x] Update activity-assistants backend with current recording behavior
+  - [x] Local recording of ADLs
+  - [x] Synchronization with activity-assistant
+  - [x] Update activity-assistants backend with real-time logging information
   - [ ] Local editing of activity records 
 
 ## Contributing 
@@ -43,7 +44,7 @@ _For a guide on how to use please refer to Activity-assistants documentation (to
   - [homeassistant](https://www.home-assistant.io/) - Homeautomation platform
   
 ## Support 
-  - Todo buy me a coffee batch
+[![Buy me a coffee][buy-me-a-coffee-shield]][buy-me-a-coffee]
   
 ## License
 MIT  © [tcsvn](http://deadlink)
@@ -51,3 +52,7 @@ MIT  © [tcsvn](http://deadlink)
 ## Remarks 
 
 Google Play and the Google Play logo are trademarks of Google Inc.
+
+[buy-me-a-coffee-shield]: https://img.shields.io/static/v1.svg?label=%20&message=Buy%20me%20a%20coffee&color=6f4e37&logo=buy%20me%20a%20coffee&logoColor=white
+
+[buy-me-a-coffee]: https://www.buymeacoffee.com/tscvn 
