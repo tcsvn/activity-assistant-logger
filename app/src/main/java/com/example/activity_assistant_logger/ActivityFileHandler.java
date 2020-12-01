@@ -29,7 +29,7 @@ import okhttp3.ResponseBody;
 public class ActivityFileHandler {
 
     final private String ACTIVITY_FILE_NAME="activity.csv";
-    final private String DATE_FORMAT="dd-MM-yyy HH:mm:ss"; // TODO include milliseconds
+    final private String DATE_FORMAT="dd-MM-yyy HH:mm:ss.SSS";
     final private SimpleDateFormat dataFormat;
     private boolean isFirstWrite;
 
