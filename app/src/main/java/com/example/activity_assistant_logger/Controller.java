@@ -34,6 +34,7 @@ import io.reactivex.rxjava3.core.Scheduler;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.core.SingleObserver;
 import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.rxjava3.plugins.RxJavaPlugins;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
@@ -70,19 +71,24 @@ public class Controller {
         } else {
             resetConfig();
         }
-        if (mainact.isStartedFromNotification(intent)){
+        if (mainact.isStartedFromNotification(intent)) {
             openedFromNotification(intent.getStringExtra("currentActivity"));
-        }
-        else{
-            if (activityFile.activityFileExists(mainact.getApplicationContext())){
+        } else {
+            if (activityFile.activityFileExists(mainact.getApplicationContext())) {
                 // if there is a line from logging before. remove that line
                 try {
                     activityFile.cleanupActivityFile(mainact.getApplicationContext());
-                }catch (IOException e){
+                } catch (IOException e) {
                     mainact.createToast("sth. went wrong cleaning up activity file");
                 }
             }
         }
+        // No OP error handler. If some error occurs in flows that aren't handled, this
+        // thing catches it and does nothing (TODO do I want this?)
+        RxJavaPlugins.setErrorHandler(e -> {
+            //mainact.createToast(e.getMessage());
+            System.out.println("asdf");
+        });
     }
 
     //__Methods__---------------------------------------------------------------------------------------
@@ -128,15 +134,15 @@ public class Controller {
         //return actAssist.getDeviceActivityName();
     }
 
-    public String getDeviceName(){
-        return Build.MODEL.substring(0,1).toUpperCase() + Build.MODEL.substring(1);
+    public String getDeviceName() {
+        return Build.MODEL.substring(0, 1).toUpperCase() + Build.MODEL.substring(1);
     }
 
-    public boolean getLogging(){
+    public boolean getLogging() {
         return mainact.getSwitchChecked();
     }
 
-    public String getLoggedActivity(){
+    public String getLoggedActivity() {
         return currentActivity;
     }
 
@@ -158,7 +164,7 @@ public class Controller {
 
     //__GUI Callbacks__---------------------------------------------------------------------------------
 
-    public void openedFromNotification(String currentActivity){
+    public void openedFromNotification(String currentActivity) {
         /** tries to reset the state of the app to before it was minimized
          *
          */
@@ -175,76 +181,75 @@ public class Controller {
         String tmp = DEVICE_STATUS_REGISTERED;
         String tmp2 = deviceState;
 
-        //if (deviceState.equals(DEVICE_STATUS_REGISTERED)) {
         if (tmp.equals(tmp2)) {
-                if (turnedOn) {
-                    mainact.createNotification();
-                    if (actAssist.isExperimentConducted()) {
-                        try {
-                            String selectedActivity = mainact.getSelectedActivity();
-                            activityFile.createActivity(
-                                    mainact.getApplicationContext(),
-                                    selectedActivity
-                            );
-                            currentActivity = selectedActivity;
-                        } catch (Exception e) {
-                            Toast.makeText(mainact, "sth went wrong writing activity file",
-                                    Toast.LENGTH_SHORT).show();
-                        }
-
-                        // update external representation of smartphone
-                        actAssist.getSmartphoneAndActivties().flatMap(pair -> {
-                                    actAssist.setSmartphone(pair.second);
-                                    actAssist.getSmartphone().setLogging(true);
-                                    actAssist.getSmartphone().setLoggedActivity(
-                                            actAssist.getActivityUrl(currentActivity, pair.first));
-                                    return actAssist.putSmartphoneAPI();
-                                }).subscribe(
-                                        smartphone ->  {
-                                            actAssist.setSmartphone(smartphone);
-                                            mainact.setServerStatus(SERVER_STATUS_ONLINE);
-                                        },
-                                    throwable -> {
-                                        if (throwable instanceof ConnectException){
-                                            mainact.setServerStatus(SERVER_STATUS_OFFLINE);
-                                        }
-                                        actAssist.getSmartphone().setLogging(true);
-                                    }
-                                );
+            if (turnedOn) {
+                mainact.createNotification();
+                if (actAssist.isExperimentConducted()) {
+                    try {
+                        String selectedActivity = mainact.getSelectedActivity();
+                        activityFile.createActivity(
+                                mainact.getApplicationContext(),
+                                selectedActivity
+                        );
+                        currentActivity = selectedActivity;
+                    } catch (Exception e) {
+                        Toast.makeText(mainact, "sth went wrong writing activity file",
+                                Toast.LENGTH_SHORT).show();
                     }
-                } else {
-                    mainact.removeNotification();
-                    if (actAssist.isExperimentConducted()) {
-                        try {
-                            activityFile.finishActivity(
-                                    mainact.getApplicationContext(),
-                                    mainact.getSelectedActivity());
-                            currentActivity = null;
-                        } catch (Exception e) {
-                            Toast.makeText(mainact, "sth went wrong writing activity file",
-                                    Toast.LENGTH_SHORT).show();
-                        }
 
-                        // update external representation of smartphone
-                        actAssist.getSmartphoneAPI().flatMap(smartphone -> {
-                                    actAssist.setSmartphone(smartphone);
-                                    actAssist.getSmartphone().setLogging(false);
-                                    actAssist.getSmartphone().setLoggedActivity("");
-                                    return actAssist.putSmartphoneAPI();
-                        }).subscribe(
-                                smartphone -> {
-                                    actAssist.setSmartphone(smartphone);
-                                    mainact.setServerStatus(SERVER_STATUS_ONLINE);
-                                },
-                                throwable -> {
-                                    actAssist.getSmartphone().setLogging(false);
-                                    actAssist.getSmartphone().setLoggedActivity("");
-                                    if (throwable instanceof ConnectException){
-                                            mainact.setServerStatus(SERVER_STATUS_OFFLINE);
-                                        }
-                                });
-                    }
+                    // update external representation of smartphone
+                    actAssist.getSmartphoneAndActivties().flatMap(pair -> {
+                        actAssist.setSmartphone(pair.second);
+                        actAssist.getSmartphone().setLogging(true);
+                        actAssist.getSmartphone().setLoggedActivity(
+                                actAssist.getActivityUrl(currentActivity, pair.first));
+                        return actAssist.putSmartphoneAPI();
+                    }).subscribe(
+                            smartphone -> {
+                                actAssist.setSmartphone(smartphone);
+                                mainact.setServerStatus(SERVER_STATUS_ONLINE);
+                            },
+                            throwable -> {
+                                if (throwable instanceof ConnectException) {
+                                    mainact.setServerStatus(SERVER_STATUS_OFFLINE);
+                                }
+                                actAssist.getSmartphone().setLogging(true);
+                            }
+                    );
                 }
+            } else {
+                mainact.removeNotification();
+                if (actAssist.isExperimentConducted()) {
+                    try {
+                        activityFile.finishActivity(
+                                mainact.getApplicationContext(),
+                                mainact.getSelectedActivity());
+                        currentActivity = null;
+                    } catch (Exception e) {
+                        Toast.makeText(mainact, "sth went wrong writing activity file",
+                                Toast.LENGTH_SHORT).show();
+                    }
+
+                    // update external representation of smartphone
+                    actAssist.getSmartphoneAPI().flatMap(smartphone -> {
+                        actAssist.setSmartphone(smartphone);
+                        actAssist.getSmartphone().setLogging(false);
+                        actAssist.getSmartphone().setLoggedActivity("");
+                        return actAssist.putSmartphoneAPI();
+                    }).subscribe(
+                            smartphone -> {
+                                actAssist.setSmartphone(smartphone);
+                                mainact.setServerStatus(SERVER_STATUS_ONLINE);
+                            },
+                            throwable -> {
+                                actAssist.getSmartphone().setLogging(false);
+                                actAssist.getSmartphone().setLoggedActivity("");
+                                if (throwable instanceof ConnectException) {
+                                    mainact.setServerStatus(SERVER_STATUS_OFFLINE);
+                                }
+                            });
+                }
+            }
         } else {
             mainact.setSwitchLogging(false);
             mainact.createToast("first register device to log");
@@ -277,101 +282,108 @@ public class Controller {
             } catch (Exception e) {
                 actFileAlreadyCreated = false;
             }
-                Smartphone sm = actAssist.createNewSmartphone(
-                        urlApi +
-                                jsonObject.getString(ActAssistApi.URL_PERSON));
-                actAssist.createSmartphoneAndGetActivties(sm)
-                        .subscribe(new SingleObserver<Pair<List<Activity>, Smartphone>>() {
-                            @Override
-                            public void onSubscribe(@NonNull Disposable d) {
+            Smartphone sm = actAssist.createNewSmartphone(
+                    urlApi +
+                            jsonObject.getString(ActAssistApi.URL_PERSON));
+            actAssist.createSmartphoneAndGetActivties(sm)
+                    .subscribe(new SingleObserver<Pair<List<Activity>, Smartphone>>() {
+                        @Override
+                        public void onSubscribe(@NonNull Disposable d) {
+
+                        }
+
+                        @Override
+                        public void onSuccess(@NonNull Pair<List<Activity>, Smartphone> listSmartphonePair) {
+                            actAssist.setActivities(listSmartphonePair.first);
+                            actAssist.setSmartphone(listSmartphonePair.second);
+                            try {
+                                data.dumpActAssistToFile(
+                                        mainact.getApplicationContext(),
+                                        actAssist);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                // TODO do sth if this fails
 
                             }
-
-                            @Override
-                            public void onSuccess(@NonNull Pair<List<Activity>, Smartphone> listSmartphonePair) {
-                                actAssist.setActivities(listSmartphonePair.first);
-                                actAssist.setSmartphone(listSmartphonePair.second);
-                                try {
-                                    data.dumpActAssistToFile(
-                                            mainact.getApplicationContext(),
-                                            actAssist);
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                    // TODO do sth if this fails
+                            mainact.setReloadSpinnerActivity((ArrayList<String>) actAssist.getActivities());
+                            mainact.setServerStatus(SERVER_STATUS_ONLINE);
+                            deviceState = DEVICE_STATUS_REGISTERED;
+                            mainact.setDeviceStatus(DEVICE_STATUS_REGISTERED);
+                            actAssist.getPerson().subscribe(new SingleObserver<Person>() {
+                                @Override
+                                public void onSubscribe(@NonNull Disposable d) {
 
                                 }
-                                mainact.setReloadSpinnerActivity((ArrayList<String>) actAssist.getActivities());
-                                mainact.setServerStatus(SERVER_STATUS_ONLINE);
-                                deviceState = DEVICE_STATUS_REGISTERED;
-                                mainact.setDeviceStatus(DEVICE_STATUS_REGISTERED);
-                                actAssist.getPerson().subscribe(new SingleObserver<Person>() {
-                                    @Override
-                                    public void onSubscribe(@NonNull Disposable d) {
 
-                                    }
+                                @Override
+                                public void onSuccess(@NonNull Person person) {
+                                    actAssist.setActivityFileUrl(person.getActivityFile());
+                                    actAssist.getSmartphone().setSynchronized(true);
+                                    actAssist.putSmartphoneAPI().subscribe(new SingleObserver<Smartphone>() {
+                                        @Override
+                                        public void onSubscribe(@NonNull Disposable d) {
 
-                                    @Override
-                                    public void onSuccess(@NonNull Person person) {
-                                        actAssist.setActivityFileUrl(person.getActivityFile());
-                                        actAssist.getSmartphone().setSynchronized(true);
-                                        actAssist.putSmartphoneAPI().subscribe(new SingleObserver<Smartphone>() {
+                                        }
+
+                                        @Override
+                                        public void onSuccess(@NonNull Smartphone smartphone) {
+                                            actAssist.setSmartphone(smartphone);
+                                        }
+
+                                        @Override
+                                        public void onError(@NonNull Throwable e) {
+
+                                        }
+                                    });
+                                    try {
+                                        // check if there is an activity file on server
+                                        person.getActivityFile().equals("");
+                                        // than download it
+                                        actAssist.downloadActivityFile(person.getActivityFile()).subscribe(new SingleObserver<ResponseBody>() {
                                             @Override
                                             public void onSubscribe(@NonNull Disposable d) {
 
                                             }
 
                                             @Override
-                                            public void onSuccess(@NonNull Smartphone smartphone) {
-                                                actAssist.setSmartphone(smartphone);
+                                            public void onSuccess(@NonNull ResponseBody responseBody) {
+                                                try {
+                                                    activityFile.replaceActivityFile(mainact.getApplicationContext(), responseBody);
+                                                } catch (IOException e) {
+                                                    mainact.createToast("successfully downloaded activity file but couldn't save");
+                                                }
                                             }
 
                                             @Override
                                             public void onError(@NonNull Throwable e) {
-
+                                                System.out.println("asdf");
                                             }
                                         });
-                                        try {
-                                            // check if there is an activity file on server
-                                            person.getActivityFile().equals("");
-                                            // than download it
-                                            actAssist.downloadActivityFile(person.getActivityFile()).subscribe(new SingleObserver<ResponseBody>() {
-                                                @Override
-                                                public void onSubscribe(@NonNull Disposable d) {
-
-                                                }
-
-                                                @Override
-                                                public void onSuccess(@NonNull ResponseBody responseBody) {
-                                                    try {
-                                                        activityFile.replaceActivityFile(mainact.getApplicationContext(), responseBody);
-                                                    } catch (IOException e) {
-                                                        mainact.createToast("successfully downloaded activity file but couldn't save");
-                                                    }
-                                                }
-
-                                                @Override
-                                                public void onError(@NonNull Throwable e) {
-                                                    System.out.println("asdf");
-                                                }
-                                            });
-                                        }catch (NullPointerException e){}
+                                    } catch (NullPointerException e) {
                                     }
+                                }
 
-                                    @Override
-                                    public void onError(@NonNull Throwable e) {
-                                        System.out.println("asdf");
-                                    }
-                                });
+                                @Override
+                                public void onError(@NonNull Throwable e) {
+                                    System.out.println("asdf");
+                                }
+                            });
 
-                            }
+                        }
 
-                            @Override
-                            public void onError(@NonNull Throwable e) {
+                        @Override
+                        public void onError(@NonNull Throwable e) {
+                            if (e instanceof ConnectException){
                                 mainact.setServerStatus(SERVER_STATUS_OFFLINE);
                                 deviceState = DEVICE_STATUS_UNCONFIGURED;
                                 mainact.setDeviceStatus(DEVICE_STATUS_UNCONFIGURED);
+                                mainact.createToast("can't connect to server. Recheck servers IP settings.");
                             }
-                        });
+                            mainact.setServerStatus(SERVER_STATUS_OFFLINE);
+                            deviceState = DEVICE_STATUS_UNCONFIGURED;
+                            mainact.setDeviceStatus(DEVICE_STATUS_UNCONFIGURED);
+                        }
+                    });
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -406,7 +418,7 @@ public class Controller {
                     throwable -> {
                         actAssist.getSmartphone().setLogging(true);
                     }
-                    );
+            );
         }
     }
 
@@ -429,43 +441,43 @@ public class Controller {
          *          proceed with deletion local files
          */
         actAssist.getSmartphoneAPI().flatMap(smartphone -> actAssist.deleteSmartphoneAPI(smartphone))
-                .subscribe(responseBody ->  {
-                   deviceState = DEVICE_STATUS_UNCONFIGURED;
-                   mainact.setServerStatus(SERVER_STATUS_UNCONFIGURED);
-                   mainact.setDeviceStatus(DEVICE_STATUS_UNCONFIGURED);
-                   mainact.setSwitchLogging(false);
-                   mainact.resetSpinnerLists();
-                   actAssist = null;
+                .subscribe(responseBody -> {
+                            deviceState = DEVICE_STATUS_UNCONFIGURED;
+                            mainact.setServerStatus(SERVER_STATUS_UNCONFIGURED);
+                            mainact.setDeviceStatus(DEVICE_STATUS_UNCONFIGURED);
+                            mainact.setSwitchLogging(false);
+                            mainact.resetSpinnerLists();
+                            actAssist = null;
 
-                   // wipe data
-                   data.deleteConfigFile(mainact.getApplicationContext());
-                   activityFile.deleteActivityFile(mainact.getApplicationContext());
-                   mainact.createToast("deleted everything");
-               },
-                throwable -> {
-                   // TODO this is a dirty hack to respond to the
-                   // inadequate 204 No Content response from server after deleting
-                   // the object which results in an error but should have been a success
-                   if (throwable instanceof java.util.NoSuchElementException) {
-                       deviceState = DEVICE_STATUS_UNCONFIGURED;
-                       mainact.setServerStatus(SERVER_STATUS_UNCONFIGURED);
-                       mainact.setDeviceStatus(DEVICE_STATUS_UNCONFIGURED);
-                       mainact.setSwitchLogging(false);
-                       mainact.resetSpinnerLists();
-                       actAssist = null;
+                            // wipe data
+                            data.deleteConfigFile(mainact.getApplicationContext());
+                            activityFile.deleteActivityFile(mainact.getApplicationContext());
+                            mainact.createToast("deleted everything");
+                        },
+                        throwable -> {
+                            // TODO this is a dirty hack to respond to the
+                            // inadequate 204 No Content response from server after deleting
+                            // the object which results in an error but should have been a success
+                            if (throwable instanceof java.util.NoSuchElementException) {
+                                deviceState = DEVICE_STATUS_UNCONFIGURED;
+                                mainact.setServerStatus(SERVER_STATUS_UNCONFIGURED);
+                                mainact.setDeviceStatus(DEVICE_STATUS_UNCONFIGURED);
+                                mainact.setSwitchLogging(false);
+                                mainact.resetSpinnerLists();
+                                actAssist = null;
 
-                       // wipe data
-                       data.deleteConfigFile(mainact.getApplicationContext());
-                       activityFile.deleteActivityFile(mainact.getApplicationContext());
-                       mainact.createToast("deleted everything");
-                   } else {
-                       mainact.createToast("couldn't delete smartphone on api");
-                   }
-               }
+                                // wipe data
+                                data.deleteConfigFile(mainact.getApplicationContext());
+                                activityFile.deleteActivityFile(mainact.getApplicationContext());
+                                mainact.createToast("deleted everything");
+                            } else {
+                                mainact.createToast("couldn't delete smartphone on api");
+                            }
+                        }
                 );
     }
 
-    public void onBtnSynchronize(){
+    public void onBtnSynchronize() {
         /** synchronize cached data files
          * first gets a smartphone and checks if it is in push mode or not
          * if it is in push mode pushes smartphone and activity file to server
@@ -498,28 +510,25 @@ public class Controller {
                     //      upload the activity file
                     return actAssist.uploadActivityFile(person,
                             activityFile.getActivityMultipart(mainact.getApplicationContext()));
-                }
-                else if(actAssist.getActivityFileUrl() == null){
+                } else if (actAssist.getActivityFileUrl() == null) {
                     // if smartphone is out of sync and the server has no activity file
                     //      delete local activity file
                     activityFile.deleteActivityFile(mainact.getApplicationContext());
                     return actAssist.putSmartphoneAPI();
-                }
-                else{
+                } else {
                     // if smartphone is out of sync and the server has a activitiy file
                     //      download activity file
                     return actAssist.downloadActivityFile(person.getActivityFile());
                 }
             }).flatMap(object -> {
-                if (object instanceof ResponseBody){
-                       try {
-                           activityFile.replaceActivityFile(
-                                   mainact.getApplicationContext(), ((ResponseBody) object));
-                       } catch (IOException e) {
-                           mainact.createToast("successfully downloaded activity file but couldn't save");
-                       }
-                }
-                else if (object instanceof Person){
+                if (object instanceof ResponseBody) {
+                    try {
+                        activityFile.replaceActivityFile(
+                                mainact.getApplicationContext(), ((ResponseBody) object));
+                    } catch (IOException e) {
+                        mainact.createToast("successfully downloaded activity file but couldn't save");
+                    }
+                } else if (object instanceof Person) {
                     // case if in previous step the file was uploaded
                     actAssist.setActivityFileUrl(((Person) object).getActivityFile());
                 }
@@ -527,18 +536,17 @@ public class Controller {
                 // everything worked out
                 return actAssist.putSmartphoneAPI();
             }).subscribe(sm -> {
-               mainact.createToast("successfully synchronized");
-               mainact.setServerStatus(SERVER_STATUS_ONLINE);
-            }, throwable -> {
-                mainact.createToast("couldn't synchronize");
-                if (throwable instanceof IOException){
-                    mainact.setServerStatus(SERVER_STATUS_OFFLINE);
-                }
-            }
+                        mainact.createToast("successfully synchronized");
+                        mainact.setServerStatus(SERVER_STATUS_ONLINE);
+                    }, throwable -> {
+                        mainact.createToast("couldn't synchronize");
+                        if (throwable instanceof IOException) {
+                            mainact.setServerStatus(SERVER_STATUS_OFFLINE);
+                        }
+                    }
             );//.dispose();
-        }
-        else{
-            if (mainact.getSwitchChecked()){
+        } else {
+            if (mainact.getSwitchChecked()) {
                 mainact.createToast("sync is not allowed while logging");
             }
         }

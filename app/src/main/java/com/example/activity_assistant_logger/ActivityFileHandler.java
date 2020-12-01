@@ -237,7 +237,11 @@ public class ActivityFileHandler {
             try {
                 String csvLine;
                 while ((csvLine = reader.readLine()) != null) {
-                    resultList.add(csvLine.split(","));
+                    String [] line = csvLine.split(",");
+                    // don't add empty lines
+                    if (line.length != 1 || line[0].length() != 0){
+                        resultList.add(line);
+                    }
                 }
             }
             catch (IOException ex) {

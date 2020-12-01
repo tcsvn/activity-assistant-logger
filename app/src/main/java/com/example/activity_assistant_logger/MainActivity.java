@@ -42,7 +42,7 @@ public class MainActivity extends AppCompatActivity implements MySpinner.OnItemS
     TextView deviceStatus;
     TextView serverStatus;
     MySpinner mySpinner_activity;
-    private final Boolean DEBUG = true;
+    private final Boolean DEBUG = false;
     private Switch switch_logging;
     private String device_status;
     private String CHANNEL_ID = "0";
