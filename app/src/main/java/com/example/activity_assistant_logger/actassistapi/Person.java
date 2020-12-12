@@ -17,12 +17,16 @@ public class Person {
     @SerializedName("prediction")
     @Expose
     private Boolean prediction;
+    @SerializedName("person_statistic")
+    @Expose
+    private String personStatistic;
     @SerializedName("smartphone")
     @Expose
     private String smartphone;
     @SerializedName("activity_file")
     @Expose
     private String activityFile;
+
 
     public Integer getId() {
         return id;
@@ -54,6 +58,14 @@ public class Person {
 
     public void setPrediction(Boolean prediction) {
         this.prediction = prediction;
+    }
+
+    public String getPersonStatistic() {
+        return personStatistic;
+    }
+
+    public void setPersonStatistic(String personStatistic) {
+        this.personStatistic = personStatistic;
     }
 
     public String getSmartphone() {
