@@ -12,7 +12,7 @@
 
 ## Installation
 
-Get the app via [Play Store](https://google.play.com) or [F-Droid](https://google.play.com) (to come). The latest release can be installed by scanning the qrcode, downloading and installing the app with your smartphone.
+Get the app via [Play Store](https://google.play.com) or [F-Droid](https://f-droid.org) (to come). The latest release can be fetched by scanning the qrcode, downloading and installing the app with your smartphone.
 
 <p align="center">
   <img src="https://f-droid.org/badge/get-it-on.png"
@@ -23,10 +23,10 @@ Get the app via [Play Store](https://google.play.com) or [F-Droid](https://googl
       alt="Download from Google Play" 
       height="80">  
 </p>
-_For a guide on how to use please refer to Activity-assistants documentation (to come)_
+_For a guide on how to use please refer to activity-assistants documentation (to come)_
 
 ## Features
-  - [x] Local recording of ADLs
+  - [x] Local annotation of ADLs
   - [x] Synchronization with activity-assistant
   - [x] Update activity-assistants backend with real-time logging information
   - [ ] Local editing of activity records 
@@ -41,7 +41,6 @@ _For a guide on how to use please refer to Activity-assistants documentation (to
 ## Related projects
   - [activity-assistant](https://github.com/tcsvn/act_assist_logger) - The data aggregation platform
   - [pyadlml](https://github.com/tcsvn/pyadlml) - A python library containing data exploration methods for ADL datasets.
-  - [homeassistant](https://www.home-assistant.io/) - Homeautomation platform
   
 ## Support 
 [![Buy me a coffee][buy-me-a-coffee-shield]][buy-me-a-coffee]
