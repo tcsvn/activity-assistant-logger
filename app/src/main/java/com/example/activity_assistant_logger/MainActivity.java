@@ -14,6 +14,9 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 import androidx.appcompat.widget.Toolbar;
+
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -71,6 +74,12 @@ public class MainActivity extends AppCompatActivity implements MySpinner.OnItemS
         createNotificationChannel();
         this.requestPermissions();
         controller = new Controller(MainActivity.this, getIntent());
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
     }
 
     private void requestPermissions(){
@@ -260,8 +269,16 @@ public class MainActivity extends AppCompatActivity implements MySpinner.OnItemS
 
 
 //__Callbacks__--------------------------------------------------------------------------------
-    public void btnShowActFileView(View view){
-        controller.onBtnShowActFileView();
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle item selection
+        switch (item.getItemId()) {
+            case R.id.action_display_actfile:
+                controller.onBtnShowActFileView();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
     }
 
     public void btnSynchronize(View view){

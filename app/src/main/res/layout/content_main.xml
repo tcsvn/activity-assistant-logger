@@ -210,15 +210,4 @@
         </LinearLayout>
     </ScrollView>
 
-    <Button
-        android:id="@+id/button2"
-        android:layout_width="279dp"
-        android:layout_height="39dp"
-        android:layout_marginBottom="8dp"
-        android:onClick="btnShowActFileView"
-        android:text="Show Activity"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="@+id/scrollView2" />
-
 </androidx.constraintlayout.widget.ConstraintLayout>
