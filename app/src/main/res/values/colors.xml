@@ -1,13 +1,110 @@
-<!-- https://material.io/resources/color/#!/?view.left=0&view.right=0&primary.color=283593&secondary.color=FFB74D-->
-<!-- used this theme https://bootswatch.com/flatly/ -->
-<!--?xml version="1.0" encoding="UTF-8"?-->
+
 <resources>
-<color name="primaryColor">#2c3e50</color>
-<color name="primaryLightColor">#5f5fc4</color>
-<color name="primaryDarkColor">#001064</color>
-<color name="secondaryColor">#b71c1c</color>
-<color name="secondaryLightColor">#f05545</color>
-<color name="secondaryDarkColor">#7f0000</color>
-<color name="primaryTextColor">#ffffff</color>
-<color name="secondaryTextColor">#ffffff</color>
+    <color name="seed">#2C3E50</color>
+    <color name="md_theme_light_primary">#00639C</color>
+    <color name="md_theme_light_onPrimary">#FFFFFF</color>
+    <color name="md_theme_light_primaryContainer">#CEE5FF</color>
+    <color name="md_theme_light_onPrimaryContainer">#001D33</color>
+    <color name="md_theme_light_secondary">#00696E</color>
+    <color name="md_theme_light_onSecondary">#FFFFFF</color>
+    <color name="md_theme_light_secondaryContainer">#6FF6FF</color>
+    <color name="md_theme_light_onSecondaryContainer">#002022</color>
+    <color name="md_theme_light_tertiary">#3C59B0</color>
+    <color name="md_theme_light_onTertiary">#FFFFFF</color>
+    <color name="md_theme_light_tertiaryContainer">#DBE1FF</color>
+    <color name="md_theme_light_onTertiaryContainer">#00174D</color>
+    <color name="md_theme_light_error">#BA1A1A</color>
+    <color name="md_theme_light_errorContainer">#FFDAD6</color>
+    <color name="md_theme_light_onError">#FFFFFF</color>
+    <color name="md_theme_light_onErrorContainer">#410002</color>
+    <color name="md_theme_light_background">#F9FDFF</color>
+    <color name="md_theme_light_onBackground">#001F27</color>
+    <color name="md_theme_light_surface">#F9FDFF</color>
+    <color name="md_theme_light_onSurface">#001F27</color>
+    <color name="md_theme_light_surfaceVariant">#DEE3EB</color>
+    <color name="md_theme_light_onSurfaceVariant">#42474E</color>
+    <color name="md_theme_light_outline">#72777F</color>
+    <color name="md_theme_light_inverseOnSurface">#DAF5FF</color>
+    <color name="md_theme_light_inverseSurface">#003641</color>
+    <color name="md_theme_light_inversePrimary">#98CBFF</color>
+    <color name="md_theme_light_shadow">#000000</color>
+    <color name="md_theme_light_surfaceTint">#00639C</color>
+    <color name="md_theme_light_outlineVariant">#C2C7CF</color>
+    <color name="md_theme_light_scrim">#000000</color>
+    <color name="md_theme_dark_primary">#98CBFF</color>
+    <color name="md_theme_dark_onPrimary">#003354</color>
+    <color name="md_theme_dark_primaryContainer">#004A77</color>
+    <color name="md_theme_dark_onPrimaryContainer">#CEE5FF</color>
+    <color name="md_theme_dark_secondary">#4CD9E2</color>
+    <color name="md_theme_dark_onSecondary">#00373A</color>
+    <color name="md_theme_dark_secondaryContainer">#004F53</color>
+    <color name="md_theme_dark_onSecondaryContainer">#6FF6FF</color>
+    <color name="md_theme_dark_tertiary">#B5C4FF</color>
+    <color name="md_theme_dark_onTertiary">#00297A</color>
+    <color name="md_theme_dark_tertiaryContainer">#204097</color>
+    <color name="md_theme_dark_onTertiaryContainer">#DBE1FF</color>
+    <color name="md_theme_dark_error">#FFB4AB</color>
+    <color name="md_theme_dark_errorContainer">#93000A</color>
+    <color name="md_theme_dark_onError">#690005</color>
+    <color name="md_theme_dark_onErrorContainer">#FFDAD6</color>
+    <color name="md_theme_dark_background">#001F27</color>
+    <color name="md_theme_dark_onBackground">#B0ECFF</color>
+    <color name="md_theme_dark_surface">#001F27</color>
+    <color name="md_theme_dark_onSurface">#B0ECFF</color>
+    <color name="md_theme_dark_surfaceVariant">#42474E</color>
+    <color name="md_theme_dark_onSurfaceVariant">#C2C7CF</color>
+    <color name="md_theme_dark_outline">#8C9199</color>
+    <color name="md_theme_dark_inverseOnSurface">#001F27</color>
+    <color name="md_theme_dark_inverseSurface">#B0ECFF</color>
+    <color name="md_theme_dark_inversePrimary">#00639C</color>
+    <color name="md_theme_dark_shadow">#000000</color>
+    <color name="md_theme_dark_surfaceTint">#98CBFF</color>
+    <color name="md_theme_dark_outlineVariant">#42474E</color>
+    <color name="md_theme_dark_scrim">#000000</color>
+
+    <!-- Categorical colors-->
+    <color name="cat_01">#006D9C</color>
+    <color name="cat_02">#4FA484</color>
+    <color name="cat_03">#EC9960</color>
+    <color name="cat_04">#AF575A</color>
+    <color name="cat_05">#B6C75A</color>
+    <color name="cat_06">#62B3B2</color>
+    <color name="cat_07">#294E70</color>
+    <color name="cat_08">#738795</color>
+    <color name="cat_09">#EDD051</color>
+    <color name="cat_10">#BD9872</color>
+    <!-- TODO get new colors below, currently only repeating -->
+    <color name="cat_11">#006D9C</color>
+    <color name="cat_12">#4FA484</color>
+    <color name="cat_13">#EC9960</color>
+    <color name="cat_14">#AF575A</color>
+    <color name="cat_15">#B6C75A</color>
+    <color name="cat_16">#62B3B2</color>
+    <color name="cat_17">#294E70</color>
+    <color name="cat_18">#738795</color>
+    <color name="cat_19">#EDD051</color>
+    <color name="cat_20">#BD9872</color>
+    <array name="categorical">
+        <item>@color/cat_01</item>
+        <item>@color/cat_02</item>
+        <item>@color/cat_03</item>
+        <item>@color/cat_04</item>
+        <item>@color/cat_05</item>
+        <item>@color/cat_06</item>
+        <item>@color/cat_07</item>
+        <item>@color/cat_08</item>
+        <item>@color/cat_09</item>
+        <item>@color/cat_10</item>
+        <item>@color/cat_11</item>
+        <item>@color/cat_12</item>
+        <item>@color/cat_13</item>
+        <item>@color/cat_14</item>
+        <item>@color/cat_15</item>
+        <item>@color/cat_16</item>
+        <item>@color/cat_17</item>
+        <item>@color/cat_18</item>
+        <item>@color/cat_19</item>
+        <item>@color/cat_20</item>
+    </array>
 </resources>
+

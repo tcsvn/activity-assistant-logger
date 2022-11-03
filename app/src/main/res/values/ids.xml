@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="username" type="id"/>
+    <item name="start_time" type="id"/>
+    <item name="end_time" type="id"/>
+    <item name="ca_start_time" type="id"/>
+    <item name="ca_end_time" type="id"/>
+</resources>

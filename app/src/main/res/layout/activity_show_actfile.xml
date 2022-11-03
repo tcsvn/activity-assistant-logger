@@ -4,31 +4,33 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    tools:context=".DisplayFileActivity"
+    android:layout_height="match_parent"
+    android:layout_width="match_parent">
 
-    <ScrollView
-        android:id="@+id/scrollView3"
+
+    <com.example.activity_assistant_logger.weekview.WeekView
+        android:id="@+id/weekView2"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:layout_editor_absoluteX="247dp"
-        tools:layout_editor_absoluteY="355dp">
+        app:eventTextColor="@android:color/white"
+        app:textSize="12sp"
+        app:hourHeight="60dp"
+        app:maxHourHeight="480dp"
+        app:headerColumnPadding="8dp"
+        app:headerColumnTextColor="#8f000000"
+        app:headerRowPadding="12dp"
+        app:columnGap="8dp"
+        app:noOfVisibleDays="1"
+        app:headerRowBackgroundColor="#efefef"
+        app:dayBackgroundColor="#05000000"
+        app:timeColumnResolution="60"
+        app:todayBackgroundColor="#1848adff"
+        app:headerColumnBackground="#ffffffff"
+        app:todayHeaderTextColor="#2789e4"
+        app:showNowLine="true"
+        app:zoomFocusPointEnabled="true"
+        />
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical" />
-    </ScrollView>
-
-    <TextView
-        android:id="@+id/textView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp"
-        android:text="TextView"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+    <!--app:autoLimitTime="false" -->
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,7 +1,8 @@
 package com.example.activity_assistant_logger;
 
 import android.content.Context;
-import android.os.FileUtils;
+
+import com.example.activity_assistant_logger.weekview.WeekViewEvent;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
@@ -13,12 +14,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.StringReader;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Calendar;
 import java.util.Locale;
+import java.util.Map;
 import java.util.StringJoiner;
 
 import okhttp3.MediaType;
@@ -28,13 +33,13 @@ import okhttp3.ResponseBody;
 
 public class ActivityFileHandler {
 
-    final private String ACTIVITY_FILE_NAME="activity.csv";
-    final private String DATE_FORMAT="dd-MM-yyy HH:mm:ss.SSS";
+    final static private String ACTIVITY_FILE_NAME="activity.csv";
+    final static private String DATE_FORMAT="dd-MM-yyy HH:mm:ss.SSS";
     final private SimpleDateFormat dataFormat;
     private boolean isFirstWrite;
 
     public ActivityFileHandler(Context appContext){
-        this.dataFormat = new SimpleDateFormat(DATE_FORMAT, Locale.US);
+        this.dataFormat = new SimpleDateFormat(DATE_FORMAT, Locale.getDefault());
         this.isFirstWrite = isFirstWrite(appContext);
     }
 
@@ -42,6 +47,226 @@ public class ActivityFileHandler {
         return this.dataFormat.format(
                 Calendar.getInstance().getTime()
         );
+    }
+
+    public static String cal2Str(Calendar calendar, Locale locale){
+        // TODO critical, set timezone according to activity instance
+        return new SimpleDateFormat(DATE_FORMAT, locale).format(calendar.getTime());
+    }
+    public static Calendar str2Cal(String timestamp, Locale locale) throws ParseException{
+        SimpleDateFormat formatter = new SimpleDateFormat("dd-MM-yyyy HH:mm:s.S", locale);
+        Date ts = formatter.parse(timestamp);
+        Calendar res = Calendar.getInstance();
+        res.setTime(ts);
+        return res;
+    }
+
+    public String getActivity(Context appContext, WeekViewEvent event) throws FileNotFoundException{
+        String startTime  = cal2Str(event.getStartTime(), Locale.getDefault());
+        String endTime  = cal2Str(event.getEndTime(), Locale.getDefault());
+        String activity = event.getName().toString();
+        String line = startTime + "," + endTime + "," + activity;
+
+        List<String[]> cur_file = new CSVFile(appContext.openFileInput(ACTIVITY_FILE_NAME)).read();
+
+        StringBuffer inputBuffer = new StringBuffer();
+        for (int i = 0; i < cur_file.size() - 1; i++) {
+            if (startTime.equals(cur_file.get(i)[0]) && endTime.equals(cur_file.get(i)[1]) && activity.equals(cur_file.get(i)[2])){
+                 StringJoiner joiner = new StringJoiner(",");
+                 String tmp = joiner.add(cur_file.get(i)[0])
+                        .add(cur_file.get(i)[1])
+                        .add(cur_file.get(i)[2]).toString();
+                 return tmp;
+            }
+        }
+        return "";
+    }
+    public boolean isActivityInFile(Context appContext, WeekViewEvent activity){
+        List<String[]> cur_file = null;
+        String startTime  = this.cal2Str(activity.getStartTime(), Locale.getDefault());
+        String endTime  = this.cal2Str(activity.getEndTime(), Locale.getDefault());
+        String strActivity = activity.getName().toString();
+        try {
+            cur_file = new CSVFile(appContext.openFileInput(ACTIVITY_FILE_NAME)).read();
+        } catch (FileNotFoundException e){
+            return false;
+        }
+        for (int i = 0; i < cur_file.size(); i++) {
+            if (startTime.equals(cur_file.get(i)[0]) && endTime.equals(cur_file.get(i)[1]) && strActivity.equals(cur_file.get(i)[2])){
+                 return true;
+            }
+        }
+        return false;
+    }
+
+    public void deleteActivity(Context appContext, WeekViewEvent event) throws IOException {
+        deleteActivity(appContext, event.getStartTime(), event.getEndTime(), event.getName());
+    }
+
+    public void deleteActivity(Context appContext, Calendar startTime, Calendar endTime, String activity) throws IOException{
+        deleteActivity(appContext, cal2Str(startTime, Locale.getDefault()),
+                cal2Str(endTime, Locale.getDefault()), activity);
+    }
+
+    public void deleteActivity(Context appContext, String startTime, String endTime, String activity) throws IOException{
+        List<String[]> cur_file = new CSVFile(appContext.openFileInput(ACTIVITY_FILE_NAME)).read();
+        StringBuffer inputBuffer = new StringBuffer();
+
+        for (int i = 0; i < cur_file.size(); i++) {
+            StringJoiner joiner = new StringJoiner(",");
+            if (!startTime.equals(cur_file.get(i)[0]) || !endTime.equals(cur_file.get(i)[1]) || !activity.equals(cur_file.get(i)[2])){
+                String tmp = joiner.add(cur_file.get(i)[0])
+                            .add(cur_file.get(i)[1])
+                        .add(cur_file.get(i)[2]).toString();
+                    inputBuffer.append(tmp + "\n");
+                }
+            }
+
+
+        FileOutputStream os = appContext.openFileOutput(ACTIVITY_FILE_NAME, Context.MODE_PRIVATE);
+        os.write(inputBuffer.toString().getBytes());
+        os.close();
+    }
+
+    public void insertActivity(Context appContext, WeekViewEvent event) throws IOException {
+        insertActivity(appContext, event.getStartTime(), event.getEndTime(), event.getName());
+    }
+
+    public void insertActivity(Context appContext, Calendar startTime, Calendar endTime, String activity) throws IOException{
+        insertActivity(appContext, cal2Str(startTime, Locale.getDefault()), cal2Str(endTime, Locale.getDefault()), activity);
+    }
+
+    public void insertActivity(Context appContext, String startTime, String endTime, String activity) throws IOException{
+
+        List<String[]> cur_file = new CSVFile(appContext.openFileInput(ACTIVITY_FILE_NAME)).read();
+        StringBuffer inputBuffer = new StringBuffer();
+        Calendar st = null;
+        try {
+            st = ActivityFileHandler.str2Cal(startTime, Locale.getDefault());
+        } catch (ParseException e){};
+        boolean lineInserted = false;
+        for (int i = 0; i < cur_file.size(); i++) {
+            StringJoiner joiner = new StringJoiner(",");
+            String tmp = null;
+            // TODO
+            Calendar csv_st = null;
+            boolean couldParseSt = true;
+            try {
+                csv_st = ActivityFileHandler.str2Cal(cur_file.get(i)[0], Locale.getDefault());
+            }catch (ParseException e){couldParseSt = false;};
+
+            if (couldParseSt && st.compareTo(csv_st) < 0 && !lineInserted) {
+                tmp = joiner.add(startTime).add(endTime).add(activity).toString();
+                lineInserted = true;
+            }
+            else{
+                tmp = joiner.add(cur_file.get(i)[0])
+                        .add(cur_file.get(i)[1])
+                        .add(cur_file.get(i)[2]).toString();
+            }
+            inputBuffer.append(tmp + "\n");
+        }
+        // Case where the date is later than the last recorded activity
+        if (!lineInserted){
+            StringJoiner joiner = new StringJoiner(",");
+            String tmp = joiner.add(startTime).add(endTime).add(activity).toString();
+            inputBuffer.append(tmp + "\n");
+        }
+
+        FileOutputStream os = appContext.openFileOutput(ACTIVITY_FILE_NAME, Context.MODE_PRIVATE);
+        os.write(inputBuffer.toString().getBytes());
+        os.close();
+    }
+
+    public void overwriteActivity(Context appContext, WeekViewEvent oldActivity, WeekViewEvent newActivity) throws FileNotFoundException, IOException{
+        /*  This
+
+         */
+        String startTime  = this.cal2Str(oldActivity.getStartTime(), Locale.getDefault());
+        String endTime  = this.cal2Str(oldActivity.getEndTime(), Locale.getDefault());
+        String strActivity = oldActivity.getName().toString();
+
+        String newStartTime  = this.cal2Str(newActivity.getStartTime(), Locale.getDefault());
+        String newEndTime  = this.cal2Str(newActivity.getEndTime(), Locale.getDefault());
+        String newStrActivity = newActivity.getName().toString();
+
+        final String new_row = newStartTime + "," + newEndTime + "," + newStrActivity;
+
+        List<String[]> cur_file = new CSVFile(appContext.openFileInput(ACTIVITY_FILE_NAME)).read();
+        StringBuffer inputBuffer = new StringBuffer();
+
+        for (int i = 0; i < cur_file.size(); i++) {
+            StringJoiner joiner = new StringJoiner(",");
+            String tmp = null;
+            if (startTime.equals(cur_file.get(i)[0]) && endTime.equals(cur_file.get(i)[1]) && strActivity.equals(cur_file.get(i)[2])){
+                 tmp = joiner.add(newStartTime).add(newEndTime).add(newStrActivity).toString();
+            }
+            else{
+                tmp = joiner.add(cur_file.get(i)[0])
+                                   .add(cur_file.get(i)[1])
+                                   .add(cur_file.get(i)[2]).toString();
+            }
+            inputBuffer.append(tmp + "\n");
+        }
+
+        FileOutputStream os = appContext.openFileOutput(ACTIVITY_FILE_NAME, Context.MODE_PRIVATE);
+        os.write(inputBuffer.toString().getBytes());
+        os.close();
+
+
+    }
+
+    public ArrayList<? extends WeekViewEvent> getActivitiesAsEvents(Context appcontext){
+        ArrayList<WeekViewEvent> events = new ArrayList<WeekViewEvent>();
+        String str = null;
+        try {
+            str = this.getActivityFileAsString(appcontext);
+        } catch (FileNotFoundException e) {
+            return events;
+        }
+        BufferedReader bufReader = new BufferedReader(new StringReader(str));
+        String line = null;
+        Boolean condition = false;
+        try {
+            bufReader.readLine(); // Skip csv header
+            condition = (line = bufReader.readLine()) != null;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        int [] colors = appcontext.getResources().getIntArray(R.array.categorical);
+        Map<String, String> map = new HashMap<String, String>();
+
+        while (condition) {
+
+            String[] values = line.split(",");
+            // Filter out activities that are not yet finished
+            if (values.length != 3){
+                break;
+            }
+            Calendar startTime = null;
+            Calendar endTime = null;
+            String activity = values[2];
+
+            try{
+                startTime = str2Cal(values[0], Locale.getDefault());
+                endTime = str2Cal(values[1], Locale.getDefault());
+            } catch(ParseException e){}
+            WeekViewEvent event = new WeekViewEvent(
+                    startTime.getTimeInMillis(), activity, startTime, endTime);
+
+            if (!map.containsKey(activity)){
+                map.put(activity, String.valueOf(map.size()));
+            }
+            event.setColor(colors[Integer.parseInt(map.get(activity))]);
+            events.add(event);
+            try{
+                condition = (line = bufReader.readLine()) != null;
+            } catch (IOException e){
+               e.printStackTrace();
+            }
+        }
+
+        return events;
     }
 
     public boolean activityFileExists(Context appContext){
