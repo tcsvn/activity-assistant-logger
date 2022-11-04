@@ -1,6 +1,7 @@
 package com.example.activity_assistant_logger;
 
 import android.app.Application;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.util.Pair;
@@ -35,22 +36,25 @@ public class Controller extends ViewModel {
     final static String DEVICE_STATUS_REGISTERED = "registered";
     final static String DEVICE_STATUS_UNCONFIGURED = "unconfigured";
     final String STATE_INITIAL = "initial";
-    private boolean isLogging = false;
 
     private String deviceState = STATE_INITIAL;
+    private String serverState = SERVER_STATUS_UNCONFIGURED;
+    private boolean isLogging = false;
+    private boolean outOfSync = true;
 
     // Selected activity represents the HomeFragment selected value whereas
     // currentActivity is only equal to the selectedActivity when an experiment
     // is conducted and the user logs the activity
     private String mCurrentActivity;
     private String mSelectedActivity;
-    private boolean outOfSync = true;
+
     private ActAssistApi actAssist;
     private ConfigHandler data;
     private ActivityFileHandler activityFile;
 
     private HomeFragment homeFragment;
     private WeekFragment weekFragment;
+    private MainActivity mMainActivity;
 
 
     public Controller(){
@@ -61,29 +65,32 @@ public class Controller extends ViewModel {
 
     }
 
-    public Controller(MainActivity mainact) {
-        this.setup(mainact);
+    public Controller(MainActivity mainActivity) {
+        this.setup(mainActivity);
     }
 
-    private void setup(MainActivity mainact){
+    private void setup(MainActivity mainActivity){
+        mMainActivity = mainActivity;
         this.data = new ConfigHandler();
-        this.activityFile = new ActivityFileHandler(mainact.getApplicationContext());
+        this.activityFile = new ActivityFileHandler(mainActivity.getApplicationContext());
 
-        if (data.configExists(mainact.getApplicationContext())) {
-            loadFromConfig(mainact);
+        if (data.configExists(mainActivity.getApplicationContext())) {
+            loadFromConfig(mainActivity);
         } else {
             resetConfig();
         }
-        //if (mainact.isStartedFromNotification(intent)) {
+        // TODO
+        //if (mainActivity.isStartedFromNotification(intent)) {
+        //    openedFromNotification(intent.getStringExtra("currentActivity"));
         if (false){
-            //openedFromNotification(intent.getStringExtra("currentActivity"));
+
         } else {
-            if (activityFile.activityFileExists(mainact.getApplicationContext())) {
+            if (activityFile.activityFileExists(mainActivity.getApplicationContext())) {
                 // if there is a line from logging before. remove that line
                 try {
-                    activityFile.cleanupActivityFile(mainact.getApplicationContext());
+                    activityFile.cleanupActivityFile(mainActivity.getApplicationContext());
                 } catch (IOException e) {
-                    mainact.createToast("sth. went wrong cleaning up activity file");
+                    mainActivity.createToast("sth. went wrong cleaning up activity file");
                 }
             }
         }
@@ -102,6 +109,7 @@ public class Controller extends ViewModel {
     public void setWeekFragment(WeekFragment weekFragment) {
         this.weekFragment = weekFragment;
     }
+
     public void setLogging(boolean state){
        isLogging = state;
     }
@@ -124,10 +132,12 @@ public class Controller extends ViewModel {
 
     private void resetConfig() {
         this.actAssist = null;
-        // TODO update view somehow
+        serverState = SERVER_STATUS_UNCONFIGURED;
+        deviceState = DEVICE_STATUS_UNCONFIGURED;
+        isLogging = false;
+        // TODO flag for deletion, retrieve valus from controller at startup
         // mainact.setServerStatus(SERVER_STATUS_UNCONFIGURED);
         // mainact.setDeviceStatus(DEVICE_STATUS_UNCONFIGURED);
-        this.deviceState = DEVICE_STATUS_UNCONFIGURED;
         // mainact.setSwitchLogging(false);
         // mainact.resetSpinnerLists();
     }
@@ -138,6 +148,7 @@ public class Controller extends ViewModel {
     }
 
     public boolean deviceHasActivity() {
+        // TODO
         return false;
         //return actAssist.deviceHasActivity();
     }
@@ -150,9 +161,15 @@ public class Controller extends ViewModel {
     public String getDeviceName() {
         return Build.MODEL.substring(0, 1).toUpperCase() + Build.MODEL.substring(1);
     }
+
     public List<String> getActivities(){
         return this.actAssist.getActivities();
     }
+
+    public String getSelectedActivity(){
+        return homeFragment.getSelectedActivity();
+    }
+
     public boolean getLogging() {
         return isLogging;
     }
@@ -177,21 +194,28 @@ public class Controller extends ViewModel {
         homeFragment.setServerStatus(SERVER_STATUS_ONLINE);
     }
 
+    public void createNotification(){
+        NotificationHandler.createNotification(mMainActivity, getSelectedActivity());
+    }
+    public void removeNotification(){
+        NotificationHandler.removeNotification(mMainActivity);
+    }
+
     //__GUI Callbacks__---------------------------------------------------------------------------------
 
-    //public void openedFromNotification(String currentActivity) {
-    //    /** tries to reset the state of the app to before it was minimized
-    //     *
-    //     */
-    //    mainact.setSwitchLogging(true);
-    //    this.currentActivity = currentActivity;
-    //    mainact.setSpinnerActivity((ArrayList<String>) actAssist.getActivities(), currentActivity);
-    //}
+    public void openedFromNotification(String currentActivity) {
+        /** tries to reset the state of the app to before it was minimized
+         *
+         */
+        homeFragment.setSwitchLogging(true);
+        mCurrentActivity = currentActivity;
+        homeFragment.setSpinnerActivity((ArrayList<String>) actAssist.getActivities(), currentActivity);
+        mSelectedActivity = homeFragment.getSelectedActivity();
+    }
 
     public void createToast(String s){
         ((MainActivity) homeFragment.requireActivity()).createToast(s);
     }
-
 
     public void receivedDataFromQRCode(JSONObject jsonObject) {
         /** creates an activity assistant api
@@ -348,8 +372,8 @@ public class Controller extends ViewModel {
                 createToast("sth went wrong writing activity file");
             }
             // update the notification with the current activity
-            // mainAct.removeNotification();
-            // mainAct.createNotification();
+            NotificationHandler.removeNotification(mainAct);
+            NotificationHandler.createNotification(mainAct, getSelectedActivity());
 
             // update external representation
             actAssist.getSmartphoneAndActivties().flatMap(pair -> {
@@ -511,11 +535,11 @@ public class Controller extends ViewModel {
         }
 
         if (turnedOn) {
-            // TODO
-            //mainact.createNotification();
+            NotificationHandler.createNotification(mMainActivity, getSelectedActivity());
             if (actAssist.isExperimentConducted()) {
                 try {
                     activityFile.createActivity(
+                            // TODO replace with mainActivity
                             homeFragment.requireActivity().getApplicationContext(),
                             mSelectedActivity
                     );
@@ -545,8 +569,7 @@ public class Controller extends ViewModel {
                 );
             }
         } else {
-            // TODO notification
-            //mainact.removeNotification();
+            NotificationHandler.removeNotification(mMainActivity);
             if (actAssist.isExperimentConducted()) {
                 try {
                     activityFile.finishActivity(

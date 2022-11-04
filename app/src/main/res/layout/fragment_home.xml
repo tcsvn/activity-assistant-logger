@@ -41,9 +41,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent">
 
-                    <Button
+                    <Button style="@style/Widget.Material3.Button.TextButton"
                         android:id="@+id/btn_scan_qrcode"
-                        style="@style/Widget.Material3.Button.TextButton"
                         android:layout_width="wrap_content"
                         android:layout_height="48dp"
                         android:layout_marginStart="8dp"
@@ -62,7 +61,6 @@
                         android:layout_marginStart="8dp"
                         android:layout_marginTop="8dp"
                         android:text="@string/name_status_headline"
-                        android:textColor="?attr/colorPrimaryDark"
                         android:textSize="24sp"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent" />

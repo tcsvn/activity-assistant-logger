@@ -275,26 +275,33 @@ public class ActivityFileHandler {
     }
 
     public void cleanupActivityFile(Context appContext) throws IOException {
+        /* Loads activity file, removes invalid indices (columns not equal 3)
+           and saves the file back to storage.
+        * */
         try {
             List<String[]> cur_file = new CSVFile(appContext.openFileInput(ACTIVITY_FILE_NAME)).read();
             String [] lastLine = cur_file.get(cur_file.size() - 1);
             if (lastLine.length != 3 && cur_file.size() > 1){
                 // if last line wasn't finished than exclude last line
                 StringBuffer inputBuffer = new StringBuffer();
+                List<Integer> validIndices = new ArrayList<Integer>();
                 for (int i = 0; i < cur_file.size() - 1; i++) {
+                    if (cur_file.get(i).length == 3) {
+                        validIndices.add(i);
+                    }
+                }
+                for (int i =0; i < validIndices.size(); i++){
                     StringJoiner joiner = new StringJoiner(",");
                     String tmp = joiner.add(cur_file.get(i)[0])
-                            .add(cur_file.get(i)[1])
-                            .add(cur_file.get(i)[2]).toString();
+                                       .add(cur_file.get(i)[1])
+                                       .add(cur_file.get(i)[2]).toString();
                     // for the last line don't add a \n
-                    if (i < cur_file.size()-2) {
+                    if (i < validIndices.size()-2) {
                         inputBuffer.append(tmp + "\n");
                     }
-                    else{
-                        inputBuffer.append(tmp);
+                    else {
+                        inputBuffer.append(tmp + "\n");
                     }
-
-
                 }
                 FileOutputStream os = appContext.openFileOutput(ACTIVITY_FILE_NAME, Context.MODE_PRIVATE);
                 os.write(inputBuffer.toString().getBytes());

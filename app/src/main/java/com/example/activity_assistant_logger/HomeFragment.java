@@ -118,14 +118,24 @@ public class HomeFragment extends Fragment implements MySpinner.OnItemSelectedLi
             //mParam1 = getArguments().getString(ARG_PARAM1);
             //mParam2 = getArguments().getString(ARG_PARAM2);
         }
-
-
+        controller = new ViewModelProvider(requireActivity()).get(Controller.class);
     }
+
+     @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        // Provide layout view for fragment
+        return inflater.inflate(R.layout.fragment_home, container, false);
+    }
+
     @Override
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState){
+        /* https://developer.android.com/guide/fragments/lifecycle
+           instantiate callbacks
+        * */
 
-        // Set controller
-        controller = new ViewModelProvider(requireActivity()).get(Controller.class);
+        // Retrieve controller
+
         controller.setHomeFragment(this);
 
         qrcode_scan = view.findViewById(R.id.btn_scan_qrcode);
@@ -140,19 +150,16 @@ public class HomeFragment extends Fragment implements MySpinner.OnItemSelectedLi
         // Register all callbacks
         switch_logging.setOnClickListener(this);
 
+        populateValuesFromController();
 
+    }
 
-        // INitialize view with values
-        if (controller.isActAssistConfigured()){
-            setReloadSpinnerActivity((ArrayList<String>) controller.getActivities());
-            setServerStatus(SERVER_STATUS_OFFLINE);
-            setDeviceStatus(DEVICE_STATUS_REGISTERED);
-        }
-        else{
-
-        }
-
-
+    public void populateValuesFromController(){
+         setReloadSpinnerActivity((ArrayList<String>) controller.getActivities());
+        // If new controller than this is false, else the previous state
+        switch_logging.setChecked(controller.getLogging());
+        //setServerStatus(controller.getServerStatus());
+        //setDeviceStatus(DEVICE_STATUS_REGISTERED);
     }
 
     @Override
@@ -170,12 +177,6 @@ public class HomeFragment extends Fragment implements MySpinner.OnItemSelectedLi
         }
     }
 
-    @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_home, container, false);
-    }
 
 
         //__GETTER/SETTER----------------------------------------------------------------------------------
@@ -199,15 +200,14 @@ public class HomeFragment extends Fragment implements MySpinner.OnItemSelectedLi
     }
 
     public void setSwitchLogging(Boolean val){
-        // TODO notification
-        //if (val){
-        //    createNotification();
-        //}
-        //else{
-        //    removeNotification();
-        //}
         switch_logging.setChecked(val);
         controller.setLogging(val);
+        if (val){
+            controller.createNotification();
+        }
+        else{
+            controller.removeNotification();
+        }
     }
 
     public void setDeviceStatus(String new_status){

@@ -16,14 +16,13 @@
     <string name="channel_name">Test channel</string>
     <string name="channel_description">test channel description</string>
     <string name="initial_spinner_value">unconfigured</string>
-    <string name="notification_title">Activity Assistant Logger</string>
+    <string name="notification_title">Logger</string>
     <string name="notification_text">is currently logged</string>
     <string-array name="activity_array">
         <item> doing nothing</item>
         <item> learning</item>
         <item> eating breakfast</item>
     </string-array>
-    <string name="title_activity_main2">MainActivity2</string>
     <string name="title_home">Home</string>
     <string name="title_weekview">Activities</string>
 

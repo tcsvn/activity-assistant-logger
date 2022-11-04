@@ -38,6 +38,7 @@
         <!--asdf -->
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
+        style="@style/Widget.Material3.FloatingActionButton.Primary"
         android:id="@+id/btn_weekview_add_activity"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

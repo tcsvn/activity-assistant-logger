@@ -1,6 +1,8 @@
 package com.example.activity_assistant_logger;
 
 import android.os.Bundle;
+
+import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -86,21 +88,42 @@ public class WeekFragment extends Fragment implements MonthLoader.MonthChangeLis
 
     }
 
+
+    @Override
+    public void onHiddenChanged(boolean hidden) {
+        super.onHiddenChanged(hidden);
+        if (hidden) {
+            //do when hidden
+        } else {
+            // When activities are logged and the fragments are switched newly created
+            // activities should appear in the view
+            mWeekView.notifyDatasetChanged();
+        }
+    }
+
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
             //mParam1 = getArguments().getString(ARG_PARAM1);
             //mParam2 = getArguments().getString(ARG_PARAM2);
-
-
         }
+        controller = new ViewModelProvider(requireActivity()).get(Controller.class);
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_week, container, false);
+        // Provide layout view for fragment
+        return inflater.inflate(R.layout.fragment_week, container, false);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, Bundle savedInstanceState){
+        /* https://developer.android.com/guide/fragments/lifecycle
+          Set up the initial state of, instantiate callbacks
+        * */
 
         // Get a reference for the week view in the layout.
         mWeekView = (WeekView) view.findViewById(R.id.weekView);
@@ -108,13 +131,11 @@ public class WeekFragment extends Fragment implements MonthLoader.MonthChangeLis
         // weekview Loader
         mButtonAddActivity = view.findViewById(R.id.btn_weekview_add_activity);
         mButtonAddActivity.setOnClickListener(this);
-
         ///event.setColor(getResources().getColor(R.color.event_color_01));
 
         // The week view has infinite scrolling horizontally. We have to provide the events of a
         // month every time the month changes on the week view.
         mWeekView.setMonthChangeListener(this);
-
 
         // Set long press listener for events.
         mWeekView.setEventLongPressListener(this);
@@ -131,11 +152,8 @@ public class WeekFragment extends Fragment implements MonthLoader.MonthChangeLis
         mWeekView.setTextSize((int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 12, getResources().getDisplayMetrics()));
         mWeekView.setEventTextSize((int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 12, getResources().getDisplayMetrics()));
 
-
-        controller = new ViewModelProvider(requireActivity()).get(Controller.class);
         controller.setWeekFragment(this);
-        // Inflate the layout for this fragment
-        return view;
+
     }
 
 
