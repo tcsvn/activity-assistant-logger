@@ -25,6 +25,7 @@ import java.util.Calendar;
 import java.util.Locale;
 import java.util.Map;
 import java.util.StringJoiner;
+import java.util.TimeZone;
 
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
@@ -34,27 +35,28 @@ import okhttp3.ResponseBody;
 public class ActivityFileHandler {
 
     final static private String ACTIVITY_FILE_NAME="activity.csv";
-    final static private String DATE_FORMAT="dd-MM-yyy HH:mm:ss.SSS";
+    final static private String DATE_FORMAT="dd-MM-yyyy HH:mm:ss.SSS";
     final private SimpleDateFormat dataFormat;
     private boolean isFirstWrite;
 
     public ActivityFileHandler(Context appContext){
-        this.dataFormat = new SimpleDateFormat(DATE_FORMAT, Locale.getDefault());
+        this.dataFormat = new SimpleDateFormat(DATE_FORMAT);
         this.isFirstWrite = isFirstWrite(appContext);
     }
 
-    private String getCurrentTimestamp(){
+    private String getCurrentTimestamp(TimeZone tz){
         return this.dataFormat.format(
-                Calendar.getInstance().getTime()
+                Calendar.getInstance(tz).getTime()
         );
     }
 
-    public static String cal2Str(Calendar calendar, Locale locale){
+    public static String cal2Str(Calendar calendar){
         // TODO critical, set timezone according to activity instance
-        return new SimpleDateFormat(DATE_FORMAT, locale).format(calendar.getTime());
+        return new SimpleDateFormat(DATE_FORMAT).format(calendar.getTime());
     }
-    public static Calendar str2Cal(String timestamp, Locale locale) throws ParseException{
-        SimpleDateFormat formatter = new SimpleDateFormat("dd-MM-yyyy HH:mm:s.S", locale);
+
+    public static Calendar str2Cal(String timestamp) throws ParseException{
+        SimpleDateFormat formatter = new SimpleDateFormat(DATE_FORMAT);
         Date ts = formatter.parse(timestamp);
         Calendar res = Calendar.getInstance();
         res.setTime(ts);
@@ -62,8 +64,8 @@ public class ActivityFileHandler {
     }
 
     public String getActivity(Context appContext, WeekViewEvent event) throws FileNotFoundException{
-        String startTime  = cal2Str(event.getStartTime(), Locale.getDefault());
-        String endTime  = cal2Str(event.getEndTime(), Locale.getDefault());
+        String startTime  = cal2Str(event.getStartTime());
+        String endTime  = cal2Str(event.getEndTime());
         String activity = event.getName().toString();
         String line = startTime + "," + endTime + "," + activity;
 
@@ -83,8 +85,8 @@ public class ActivityFileHandler {
     }
     public boolean isActivityInFile(Context appContext, WeekViewEvent activity){
         List<String[]> cur_file = null;
-        String startTime  = this.cal2Str(activity.getStartTime(), Locale.getDefault());
-        String endTime  = this.cal2Str(activity.getEndTime(), Locale.getDefault());
+        String startTime  = this.cal2Str(activity.getStartTime());
+        String endTime  = this.cal2Str(activity.getEndTime());
         String strActivity = activity.getName().toString();
         try {
             cur_file = new CSVFile(appContext.openFileInput(ACTIVITY_FILE_NAME)).read();
@@ -104,8 +106,8 @@ public class ActivityFileHandler {
     }
 
     public void deleteActivity(Context appContext, Calendar startTime, Calendar endTime, String activity) throws IOException{
-        deleteActivity(appContext, cal2Str(startTime, Locale.getDefault()),
-                cal2Str(endTime, Locale.getDefault()), activity);
+        deleteActivity(appContext, cal2Str(startTime),
+                cal2Str(endTime), activity);
     }
 
     public void deleteActivity(Context appContext, String startTime, String endTime, String activity) throws IOException{
@@ -129,11 +131,13 @@ public class ActivityFileHandler {
     }
 
     public void insertActivity(Context appContext, WeekViewEvent event) throws IOException {
-        insertActivity(appContext, event.getStartTime(), event.getEndTime(), event.getName());
+        Calendar startTime = event.getStartTime();
+        // todo check if timezone matches
+        insertActivity(appContext, startTime, event.getEndTime(), event.getName());
     }
 
     public void insertActivity(Context appContext, Calendar startTime, Calendar endTime, String activity) throws IOException{
-        insertActivity(appContext, cal2Str(startTime, Locale.getDefault()), cal2Str(endTime, Locale.getDefault()), activity);
+        insertActivity(appContext, cal2Str(startTime), cal2Str(endTime), activity);
     }
 
     public void insertActivity(Context appContext, String startTime, String endTime, String activity) throws IOException{
@@ -142,7 +146,7 @@ public class ActivityFileHandler {
         StringBuffer inputBuffer = new StringBuffer();
         Calendar st = null;
         try {
-            st = ActivityFileHandler.str2Cal(startTime, Locale.getDefault());
+            st = ActivityFileHandler.str2Cal(startTime);
         } catch (ParseException e){};
         boolean lineInserted = false;
         for (int i = 0; i < cur_file.size(); i++) {
@@ -152,7 +156,7 @@ public class ActivityFileHandler {
             Calendar csv_st = null;
             boolean couldParseSt = true;
             try {
-                csv_st = ActivityFileHandler.str2Cal(cur_file.get(i)[0], Locale.getDefault());
+                csv_st = ActivityFileHandler.str2Cal(cur_file.get(i)[0]);
             }catch (ParseException e){couldParseSt = false;};
 
             if (couldParseSt && st.compareTo(csv_st) < 0 && !lineInserted) {
@@ -182,12 +186,12 @@ public class ActivityFileHandler {
         /*  This
 
          */
-        String startTime  = this.cal2Str(oldActivity.getStartTime(), Locale.getDefault());
-        String endTime  = this.cal2Str(oldActivity.getEndTime(), Locale.getDefault());
+        String startTime  = this.cal2Str(oldActivity.getStartTime());
+        String endTime  = this.cal2Str(oldActivity.getEndTime());
         String strActivity = oldActivity.getName().toString();
 
-        String newStartTime  = this.cal2Str(newActivity.getStartTime(), Locale.getDefault());
-        String newEndTime  = this.cal2Str(newActivity.getEndTime(), Locale.getDefault());
+        String newStartTime  = this.cal2Str(newActivity.getStartTime());
+        String newEndTime  = this.cal2Str(newActivity.getEndTime());
         String newStrActivity = newActivity.getName().toString();
 
         final String new_row = newStartTime + "," + newEndTime + "," + newStrActivity;
@@ -248,8 +252,8 @@ public class ActivityFileHandler {
             String activity = values[2];
 
             try{
-                startTime = str2Cal(values[0], Locale.getDefault());
-                endTime = str2Cal(values[1], Locale.getDefault());
+                startTime = str2Cal(values[0]);
+                endTime = str2Cal(values[1]);
             } catch(ParseException e){}
             WeekViewEvent event = new WeekViewEvent(
                     startTime.getTimeInMillis(), activity, startTime, endTime);
@@ -413,31 +417,31 @@ public class ActivityFileHandler {
         return body;
     }
 
-    public void createActivity(Context appContext, String new_activity) throws IOException {
+    public void createActivity(Context appContext, String new_activity, TimeZone tz) throws IOException {
         FileOutputStream os = appContext.openFileOutput(ACTIVITY_FILE_NAME, Context.MODE_APPEND);
         String row;
         if (this.isFirstWrite){
-            row = getCurrentTimestamp();
+            row = getCurrentTimestamp(tz);
             this.isFirstWrite = false;
         }
         else {
-            row = "\n" + getCurrentTimestamp();
+            row = "\n" + getCurrentTimestamp(tz);
         }
         os.write(row.getBytes());
         os.close();
     }
 
-    public void addActivity(Context appContext, String old_activity, String new_activity) throws IOException {
+    public void addActivity(Context appContext, String old_activity, String new_activity, TimeZone tz) throws IOException {
         /** finishes a begun line and starts a new one
         * */
-        this.finishActivity(appContext, old_activity);
-        this.createActivity(appContext, new_activity);
+        this.finishActivity(appContext, old_activity, tz);
+        this.createActivity(appContext, new_activity, tz);
     }
 
-    public void finishActivity(Context appContext, String activity) throws IOException {
+    public void finishActivity(Context appContext, String activity, TimeZone tz) throws IOException {
         /** finishes a begun line
          * */
-        final String cur_ts = getCurrentTimestamp();
+        final String cur_ts = getCurrentTimestamp(tz);
         List<String[]> cur_file = new CSVFile(appContext.openFileInput(ACTIVITY_FILE_NAME)).read();
         String old_ts = cur_file.get(cur_file.size() - 1)[0];
         final String new_row = old_ts + "," + cur_ts + "," + activity;

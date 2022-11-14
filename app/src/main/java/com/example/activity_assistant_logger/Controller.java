@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TimeZone;
 
 import com.example.activity_assistant_logger.actassistapi.ActAssistApi;
 import com.example.activity_assistant_logger.actassistapi.Activity;
@@ -33,14 +34,16 @@ public class Controller extends ViewModel {
     final static String SERVER_STATUS_ONLINE = "online";
     final static String SERVER_STATUS_UNCONFIGURED = "unconfigured";
     final static String SERVER_STATUS_OFFLINE = "not reachable";
+
+    final String STATE_INITIAL = "initial";
     final static String DEVICE_STATUS_REGISTERED = "registered";
     final static String DEVICE_STATUS_UNCONFIGURED = "unconfigured";
-    final String STATE_INITIAL = "initial";
 
-    private String deviceState = STATE_INITIAL;
-    private String serverState = SERVER_STATUS_UNCONFIGURED;
-    private boolean isLogging = false;
-    private boolean outOfSync = true;
+    private String mDeviceState = STATE_INITIAL;
+    private String mServerState = SERVER_STATUS_UNCONFIGURED;
+
+    private boolean mIsLogging = false;
+    private boolean mOutOfSync = true;
 
     // Selected activity represents the HomeFragment selected value whereas
     // currentActivity is only equal to the selectedActivity when an experiment
@@ -49,7 +52,7 @@ public class Controller extends ViewModel {
     private String mSelectedActivity;
 
     private ActAssistApi actAssist;
-    private ConfigHandler data;
+    private ConfigHandler config;
     private ActivityFileHandler activityFile;
 
     private HomeFragment homeFragment;
@@ -62,7 +65,6 @@ public class Controller extends ViewModel {
     }
     public Controller(Application app, MainActivity mainActivity){
         this.setup(mainActivity);
-
     }
 
     public Controller(MainActivity mainActivity) {
@@ -71,19 +73,19 @@ public class Controller extends ViewModel {
 
     private void setup(MainActivity mainActivity){
         mMainActivity = mainActivity;
-        this.data = new ConfigHandler();
+        this.config = new ConfigHandler();
         this.activityFile = new ActivityFileHandler(mainActivity.getApplicationContext());
 
-        if (data.configExists(mainActivity.getApplicationContext())) {
+        if (config.configExists(mainActivity.getApplicationContext())) {
             loadFromConfig(mainActivity);
         } else {
             resetConfig();
         }
-        // TODO
-        //if (mainActivity.isStartedFromNotification(intent)) {
+        // TODO very important
+        //if (NotificationHandler.isStartedFromNotification(intent)) {
         //    openedFromNotification(intent.getStringExtra("currentActivity"));
         if (false){
-
+            createToast("DEBUG: Recreating controller");
         } else {
             if (activityFile.activityFileExists(mainActivity.getApplicationContext())) {
                 // if there is a line from logging before. remove that line
@@ -110,42 +112,47 @@ public class Controller extends ViewModel {
         this.weekFragment = weekFragment;
     }
 
-    public void setLogging(boolean state){
-       isLogging = state;
-    }
-
     //__Methods__---------------------------------------------------------------------------------------
     private void loadFromConfig(MainActivity mainAct) {
         try {
-            this.actAssist = data.loadActAssistFromFile(mainAct.getApplicationContext(), this);
-            deviceState = DEVICE_STATUS_REGISTERED;
-        } catch (JSONException e) {
-            Toast.makeText(mainAct, "couldn't load server config to file", Toast.LENGTH_SHORT).show();
-            e.printStackTrace();
-            resetConfig();
-        } catch (IOException | ClassNotFoundException e) {
-            Toast.makeText(mainAct, "couldn't load server config to file", Toast.LENGTH_SHORT).show();
+            this.actAssist = config.loadActAssistFromFile(mainAct.getApplicationContext(), this);
+            setDeviceState(DEVICE_STATUS_REGISTERED);
+        } catch (JSONException | IOException | ClassNotFoundException e) {
+            Toast.makeText(mainAct, "Could not load server config from file", Toast.LENGTH_SHORT).show();
             e.printStackTrace();
             resetConfig();
         }
     }
 
-    private void resetConfig() {
-        this.actAssist = null;
-        serverState = SERVER_STATUS_UNCONFIGURED;
-        deviceState = DEVICE_STATUS_UNCONFIGURED;
-        isLogging = false;
-        // TODO flag for deletion, retrieve valus from controller at startup
-        // mainact.setServerStatus(SERVER_STATUS_UNCONFIGURED);
-        // mainact.setDeviceStatus(DEVICE_STATUS_UNCONFIGURED);
-        // mainact.setSwitchLogging(false);
-        // mainact.resetSpinnerLists();
+    public TimeZone getTimeZone(){
+        return actAssist.getLocalTimeZone();
     }
 
-    //__GETTER/SETTER__---------------------------------------------------------------------------------
+    private void resetConfig() {
+        this.actAssist = null;
+        setServerState(SERVER_STATUS_UNCONFIGURED);
+        setDeviceState(DEVICE_STATUS_UNCONFIGURED);
+        try {
+            setSwitchLogging(false);
+            homeFragment.resetSpinnerLists();
+        }catch (Exception e){};
+
+    }
+
     public boolean isActAssistConfigured() {
         return actAssist != null;
     }
+
+     public void createNotification(){
+        NotificationHandler.createNotification(mMainActivity, getSelectedActivity());
+    }
+
+    public void removeNotification(){
+        NotificationHandler.removeNotification(mMainActivity);
+    }
+
+
+    //__GETTER/SETTER__---------------------------------------------------------------------------------
 
     public boolean deviceHasActivity() {
         // TODO
@@ -156,6 +163,51 @@ public class Controller extends ViewModel {
     public String getDeviceActivityName() {
         return "debug";
         //return actAssist.getDeviceActivityName();
+    }
+
+    public boolean getLogging() {
+        try {
+            return homeFragment.getSwitchChecked();
+        } catch (NullPointerException ignored){
+            return mIsLogging;
+        }
+    }
+
+    public void setDeviceState(String state){
+        mDeviceState = state;
+        try {
+            homeFragment.setDeviceStatus(state);
+        } catch (NullPointerException ignored){};
+    }
+
+    public String getServerState(){
+        return mServerState;
+    }
+
+    public void setServerState(String state){
+        mServerState = state;
+        try {
+            homeFragment.setServerStatus(state);
+        } catch (NullPointerException ignored){};
+    }
+
+    public String getDeviceState(){
+        return mDeviceState;
+    }
+
+    public String getLoggedActivity() {
+        return mCurrentActivity;
+    }
+
+    public void setSwitchLogging(Boolean val){
+        homeFragment.setSwitchLogging(val);
+        mIsLogging = val;
+        if (val){
+            createNotification();
+        }
+        else{
+            removeNotification();
+        }
     }
 
     public String getDeviceName() {
@@ -170,36 +222,24 @@ public class Controller extends ViewModel {
         return homeFragment.getSelectedActivity();
     }
 
-    public boolean getLogging() {
-        return isLogging;
-    }
 
-    public String getLoggedActivity() {
-        return mCurrentActivity;
-    }
 
     //___HTTP__Callbacks -------------------------------------------------------------------------------
     public void onFailure(String str) {
-        Toast.makeText(homeFragment.requireActivity(), str, Toast.LENGTH_SHORT).show();
-        homeFragment.setServerStatus(SERVER_STATUS_OFFLINE);
+        Toast.makeText(mMainActivity, str, Toast.LENGTH_SHORT).show();
+        setServerState(SERVER_STATUS_OFFLINE);
     }
 
     public void onSuccess(String str) {
-        Toast.makeText(homeFragment.requireActivity(), str, Toast.LENGTH_SHORT).show();
-        homeFragment.setServerStatus(SERVER_STATUS_ONLINE);
+        Toast.makeText(mMainActivity, str, Toast.LENGTH_SHORT).show();
+        setServerState(SERVER_STATUS_ONLINE);
     }
 
     public void onGetActivitiesSuccess(ArrayList<String> activities) {
         homeFragment.setReloadSpinnerActivity(activities);
-        homeFragment.setServerStatus(SERVER_STATUS_ONLINE);
+        setServerState(SERVER_STATUS_ONLINE);
     }
 
-    public void createNotification(){
-        NotificationHandler.createNotification(mMainActivity, getSelectedActivity());
-    }
-    public void removeNotification(){
-        NotificationHandler.removeNotification(mMainActivity);
-    }
 
     //__GUI Callbacks__---------------------------------------------------------------------------------
 
@@ -207,23 +247,37 @@ public class Controller extends ViewModel {
         /** tries to reset the state of the app to before it was minimized
          *
          */
-        homeFragment.setSwitchLogging(true);
+        setSwitchLogging(true);
         mCurrentActivity = currentActivity;
         homeFragment.setSpinnerActivity((ArrayList<String>) actAssist.getActivities(), currentActivity);
         mSelectedActivity = homeFragment.getSelectedActivity();
     }
 
     public void createToast(String s){
-        ((MainActivity) homeFragment.requireActivity()).createToast(s);
+        mMainActivity.createToast(s);
     }
-
-    public void receivedDataFromQRCode(JSONObject jsonObject) {
+    public Context getApplicationContext(){
+        return mMainActivity.getApplicationContext();
+    }
+    public void onDataFromQRCode(JSONObject jsonObject) {
         /** creates an activity assistant api
          * if there is already a smartphone registered on the api
          * copy all data from the smartphone of the api including downloading the activity file
          * if there is no smartphone registered on the api
          * then create an empty smartphone
          * - also get activities
+         * create SM and get Activities
+         *   -> Succ:
+         *      * and Get Person
+         *          -> Succ:
+         *              * put smartphone
+         *                  -> Succ:
+         *                  -> Error:
+         *              * download activity file
+         *                  -> succ:
+         *              -> Error:
+         *          -> Error:
+         *   -> Error:
          * */
         try {
             String urlApi = jsonObject.getString(ActAssistApi.URL_API);
@@ -243,107 +297,55 @@ public class Controller extends ViewModel {
             } catch (Exception e) {
                 actFileAlreadyCreated = false;
             }
-            Smartphone sm = actAssist.createNewSmartphone(
-                    urlApi +
-                            jsonObject.getString(ActAssistApi.URL_PERSON));
-            actAssist.createSmartphoneAndGetActivties(sm)
+
+            String personUrl = urlApi + jsonObject.getString(ActAssistApi.URL_PERSON);
+            Smartphone sm = actAssist.createNewLocalSmartphone(personUrl);
+
+            // Get timezone from remote
+            actAssist.getRemoteTimeZone();
+
+            actAssist.createSmartphoneAndGetActivities(sm)
                     .subscribe(new SingleObserver<Pair<List<Activity>, Smartphone>>() {
                         @Override
-                        public void onSubscribe(@NonNull Disposable d) {
-
-                        }
+                        public void onSubscribe(@NonNull Disposable d) {}
 
                         @Override
                         public void onSuccess(@NonNull Pair<List<Activity>, Smartphone> listSmartphonePair) {
-                            actAssist.setActivities(listSmartphonePair.first);
-                            actAssist.setSmartphone(listSmartphonePair.second);
+                            actAssist.updateLocalActivities(listSmartphonePair.first);
+                            actAssist.updateLocalSmartphone(listSmartphonePair.second);
                             try {
-                                data.dumpActAssistToFile(
-                                        homeFragment.requireActivity().getApplicationContext(),
-                                        actAssist);
+                                config.dumpActAssistToFile(getApplicationContext(), actAssist);
                             } catch (Exception e) {
                                 e.printStackTrace();
                                 // TODO do sth if this fails
-
                             }
                             homeFragment.setReloadSpinnerActivity((ArrayList<String>) actAssist.getActivities());
-                            homeFragment.setServerStatus(SERVER_STATUS_ONLINE);
-                            deviceState = DEVICE_STATUS_REGISTERED;
-                            homeFragment.setDeviceStatus(DEVICE_STATUS_REGISTERED);
-                            actAssist.getPerson().subscribe(new SingleObserver<Person>() {
-                                @Override
-                                public void onSubscribe(@NonNull Disposable d) {
-
-                                }
-
-                                @Override
-                                public void onSuccess(@NonNull Person person) {
-                                    actAssist.setActivityFileUrl(person.getActivityFile());
-                                    actAssist.getSmartphone().setSynchronized(true);
-                                    actAssist.putSmartphoneAPI().subscribe(new SingleObserver<Smartphone>() {
-                                        @Override
-                                        public void onSubscribe(@NonNull Disposable d) {
-
-                                        }
-
-                                        @Override
-                                        public void onSuccess(@NonNull Smartphone smartphone) {
-                                            actAssist.setSmartphone(smartphone);
-                                        }
-
-                                        @Override
-                                        public void onError(@NonNull Throwable e) {
-
-                                        }
-                                    });
-                                    try {
-                                        // check if there is an activity file on server
-                                        person.getActivityFile().equals("");
-                                        // than download it
-                                        actAssist.downloadActivityFile(person.getActivityFile()).subscribe(new SingleObserver<ResponseBody>() {
-                                            @Override
-                                            public void onSubscribe(@NonNull Disposable d) {
-
-                                            }
-
-                                            @Override
-                                            public void onSuccess(@NonNull ResponseBody responseBody) {
-                                                try {
-                                                    activityFile.replaceActivityFile(homeFragment.requireActivity().getApplicationContext(), responseBody);
-                                                } catch (IOException e) {
-                                                    // TODO very ugly
-                                                    createToast("successfully downloaded activity file but couldn't save");
-                                                }
-                                            }
-
-                                            @Override
-                                            public void onError(@NonNull Throwable e) {
-                                                System.out.println("asdf");
-                                            }
-                                        });
-                                    } catch (NullPointerException e) {
+                            setServerState(SERVER_STATUS_ONLINE);
+                            setDeviceState(DEVICE_STATUS_REGISTERED);
+                            actAssist.getPerson().subscribe(
+                                   person -> {
+                                       actAssist.setActivityFileUrl(person.getActivityFile());
+                                       actAssist.getLocalSmartphone().setSynchronized(true);
+                                       actAssist.putRemoteSmartphone(true);
+                                       if (!person.getActivityFile().equals("")){
+                                            actAssist.downloadActivityFile(person.getActivityFile(), activityFile);
+                                       }
+                                   },
+                                    throwable -> {
+                                       createToast("Could not get Person -> Can not create Smartphone or get Activity File.");
                                     }
-                                }
-
-                                @Override
-                                public void onError(@NonNull Throwable e) {
-                                    System.out.println("asdf");
-                                }
-                            });
-
+                            );
                         }
 
                         @Override
                         public void onError(@NonNull Throwable e) {
                             if (e instanceof ConnectException){
-                                homeFragment.setServerStatus(SERVER_STATUS_OFFLINE);
-                                deviceState = DEVICE_STATUS_UNCONFIGURED;
-                                homeFragment.setDeviceStatus(DEVICE_STATUS_UNCONFIGURED);
+                                setServerState(SERVER_STATUS_OFFLINE);
+                                setDeviceState(DEVICE_STATUS_REGISTERED);
                                 createToast("can't connect to server. Recheck servers IP settings.");
                             }
-                            homeFragment.setServerStatus(SERVER_STATUS_OFFLINE);
-                            deviceState = DEVICE_STATUS_UNCONFIGURED;
-                            homeFragment.setDeviceStatus(DEVICE_STATUS_UNCONFIGURED);
+                            setServerState(SERVER_STATUS_OFFLINE);
+                            setDeviceState(DEVICE_STATUS_UNCONFIGURED);
                             createToast("Can't connect to server.");
                         }
                     });
@@ -353,19 +355,21 @@ public class Controller extends ViewModel {
     }
 
     public void onActivitySelected(String selectedActivity) {
-        /** log activity to file if an experiment is conducted
+        /** log activity to file
          * */
+
         // Update controller representation
         mSelectedActivity = selectedActivity;
 
         MainActivity mainAct = (MainActivity) homeFragment.requireActivity();
 
-        if (isLogging && actAssist.isExperimentConducted()) {
+        if (mIsLogging) {
             try {
                 activityFile.addActivity(
                         mainAct.getApplicationContext(),
                         mCurrentActivity,
-                        mSelectedActivity
+                        mSelectedActivity,
+                        getTimeZone()
                 );
                 mCurrentActivity = mSelectedActivity;
             } catch (Exception e) {
@@ -377,33 +381,26 @@ public class Controller extends ViewModel {
 
             // update external representation
             actAssist.getSmartphoneAndActivties().flatMap(pair -> {
-                actAssist.setSmartphone(pair.second);
-                actAssist.getSmartphone().setLogging(true);
-                actAssist.getSmartphone().setLoggedActivity(
+                actAssist.updateLocalSmartphone(pair.second);
+                actAssist.getLocalSmartphone().setLogging(true);
+                actAssist.getLocalSmartphone().setLoggedActivity(
                         actAssist.getActivityUrl(mCurrentActivity, pair.first));
-                return actAssist.putSmartphoneAPI();
-            }).subscribe(smartphone -> actAssist.setSmartphone(smartphone),
+                return actAssist.putRemoteSmartphone();
+            }).subscribe(smartphone -> actAssist.updateLocalSmartphone(smartphone),
                     throwable -> {
-                        actAssist.getSmartphone().setLogging(true);
+                        actAssist.getLocalSmartphone().setLogging(true);
                     }
             );
         }
     }
 
-    public void onBtnScanQRCode() {
+    public void onScan() {
         /** starts to scanning activity */
-        MainActivity mainAct = (MainActivity) homeFragment.requireActivity();
-        Intent intent = new Intent(mainAct, BarcodeCaptureActivity.class);
-        mainAct.startActivityForResult(intent, 0);
+        Intent intent = new Intent(mMainActivity, BarcodeCaptureActivity.class);
+        mMainActivity.startActivityForResult(intent, 0);
     }
 
-    // TODO mark for deleteion since below is now a fragment
-    //public void onBtnShowActFileView() {
-    //    Intent intent = new Intent(mainact, DisplayFileActivity.class);
-    //    mainact.startActivityForResult(intent, 0);
-    //}
-
-    public void onBtnDecouple() {
+    public void onDecouple() {
         /** first try to delete the device on the server
          * if the server is unreachable wait
          * if the server is reachable post a deleteion'
@@ -412,17 +409,16 @@ public class Controller extends ViewModel {
          */
 
         MainActivity mainAct = (MainActivity) homeFragment.requireActivity();
-        actAssist.getSmartphoneAPI().flatMap(smartphone -> actAssist.deleteSmartphoneAPI(smartphone))
+        actAssist.getRemoteSmartphone().flatMap(smartphone -> actAssist.deleteRemoteSmartphone(smartphone))
                 .subscribe(responseBody -> {
-                            deviceState = DEVICE_STATUS_UNCONFIGURED;
-                            homeFragment.setServerStatus(SERVER_STATUS_UNCONFIGURED);
-                            homeFragment.setDeviceStatus(DEVICE_STATUS_UNCONFIGURED);
-                            homeFragment.setSwitchLogging(false);
+                            setServerState(SERVER_STATUS_UNCONFIGURED);
+                            setDeviceState(DEVICE_STATUS_UNCONFIGURED);
+                            setSwitchLogging(false);
                             homeFragment.resetSpinnerLists();
                             actAssist = null;
 
                             // wipe data
-                            data.deleteConfigFile(mainAct.getApplicationContext());
+                            config.deleteConfigFile(mainAct.getApplicationContext());
                             activityFile.deleteActivityFile(mainAct.getApplicationContext());
                             createToast("deleted everything");
                         },
@@ -431,15 +427,15 @@ public class Controller extends ViewModel {
                             // inadequate 204 No Content response from server after deleting
                             // the object which results in an error but should have been a success
                             if (throwable instanceof java.util.NoSuchElementException) {
-                                deviceState = DEVICE_STATUS_UNCONFIGURED;
-                                homeFragment.setServerStatus(SERVER_STATUS_UNCONFIGURED);
-                                homeFragment.setDeviceStatus(DEVICE_STATUS_UNCONFIGURED);
-                                homeFragment.setSwitchLogging(false);
+                                setServerState(SERVER_STATUS_UNCONFIGURED);
+                                setDeviceState(DEVICE_STATUS_UNCONFIGURED);
+                                setSwitchLogging(false);
+
                                 homeFragment.resetSpinnerLists();
                                 actAssist = null;
 
                                 // wipe data
-                                data.deleteConfigFile(mainAct.getApplicationContext());
+                                config.deleteConfigFile(mainAct.getApplicationContext());
                                 activityFile.deleteActivityFile(mainAct.getApplicationContext());
                                 createToast("deleted everything");
                             } else {
@@ -456,13 +452,13 @@ public class Controller extends ViewModel {
          * if it is not synchronized delete local activity file and
          * request new activities and pull activity file from server
          * */
-        if (this.deviceState.equals(DEVICE_STATUS_REGISTERED) && !this.isLogging) {
+        if (this.mDeviceState.equals(DEVICE_STATUS_REGISTERED) && !this.mIsLogging) {
             actAssist.getSmartphoneAndActivties().flatMap(pair -> {
                 // update activities and smartphone with relevant information from the server
                 Smartphone sm = pair.second;
                 List<Activity> acts = pair.first;
-                actAssist.setSmartphone(sm);
-                actAssist.setActivities(acts);
+                actAssist.updateLocalSmartphone(sm);
+                actAssist.updateLocalActivities(acts);
                 homeFragment.setReloadSpinnerActivity((ArrayList<String>) actAssist.getActivities());
                 return actAssist.getPerson();
 
@@ -470,33 +466,35 @@ public class Controller extends ViewModel {
                 // collected all data so it is proper to save it
                 actAssist.setActivityFileUrl(person.getActivityFile());
                 try {
-                    data.dumpActAssistToFile(
-                            homeFragment.requireActivity().getApplicationContext(),
+                    config.dumpActAssistToFile(
+                            mMainActivity.getApplicationContext(),
                             actAssist);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
 
-                if (actAssist.getSmartphone().getSynchronized()) {
+                if (actAssist.getLocalSmartphone().getSynchronized()) {
                     // if smartphone is in sync
                     //      upload the activity file
                     return actAssist.uploadActivityFile(person,
-                            activityFile.getActivityMultipart(homeFragment.requireActivity().getApplicationContext()));
+                            activityFile.getActivityMultipart(mMainActivity.getApplicationContext()));
                 } else if (actAssist.getActivityFileUrl() == null) {
                     // if smartphone is out of sync and the server has no activity file
                     //      delete local activity file
-                    activityFile.deleteActivityFile(homeFragment.requireActivity().getApplicationContext());
-                    return actAssist.putSmartphoneAPI();
+                    actAssist.getRemoteTimeZone();
+                    activityFile.deleteActivityFile(mMainActivity.getApplicationContext());
+                    return actAssist.putRemoteSmartphone();
                 } else {
                     // if smartphone is out of sync and the server has a activitiy file
                     //      download activity file
+                    actAssist.getRemoteTimeZone();
                     return actAssist.downloadActivityFile(person.getActivityFile());
                 }
             }).flatMap(object -> {
                 if (object instanceof ResponseBody) {
                     try {
                         activityFile.replaceActivityFile(
-                                homeFragment.requireActivity().getApplicationContext(), ((ResponseBody) object));
+                                mMainActivity.getApplicationContext(), ((ResponseBody) object));
                     } catch (IOException e) {
                         createToast("successfully downloaded activity file but could not save");
                     }
@@ -504,16 +502,16 @@ public class Controller extends ViewModel {
                     // case if in previous step the file was uploaded
                     actAssist.setActivityFileUrl(((Person) object).getActivityFile());
                 }
-                actAssist.getSmartphone().setSynchronized(true);
+                actAssist.getLocalSmartphone().setSynchronized(true);
                 // everything worked out
-                return actAssist.putSmartphoneAPI();
+                return actAssist.putRemoteSmartphone();
             }).subscribe(sm -> {
                         createToast("successfully synchronized");
-                        homeFragment.setServerStatus(SERVER_STATUS_ONLINE);
+                        setServerState(SERVER_STATUS_ONLINE);
                     }, throwable -> {
                         createToast("couldn't synchronize");
                         if (throwable instanceof IOException) {
-                            homeFragment.setServerStatus(SERVER_STATUS_OFFLINE);
+                            setServerState(SERVER_STATUS_OFFLINE);
                         }
                     }
             );//.dispose();
@@ -523,82 +521,79 @@ public class Controller extends ViewModel {
             }
         }
     }
-     public void switchLoggingToggled(boolean turnedOn) {
+
+     public void onSwitchToggled(boolean turnedOn) {
         /** log activity to file if an experiment is conducted
          *
          */
 
-        if (!deviceState.equals(DEVICE_STATUS_REGISTERED)){
-             homeFragment.setSwitchLogging(false);
-            createToast("Connect to Activity Assistant API in order to start logging");
+        if (!getDeviceState().equals(DEVICE_STATUS_REGISTERED)){
+            setSwitchLogging(false);
+            createToast("First connect to Activity Assistant API in order to start logging");
             return;
         }
 
         if (turnedOn) {
             NotificationHandler.createNotification(mMainActivity, getSelectedActivity());
-            if (actAssist.isExperimentConducted()) {
-                try {
-                    activityFile.createActivity(
-                            // TODO replace with mainActivity
-                            homeFragment.requireActivity().getApplicationContext(),
-                            mSelectedActivity
-                    );
-                    mCurrentActivity = mSelectedActivity;
-                } catch (Exception e) {
-                    createToast("sth went wrong writing activity file");
-                }
-
-                // update external representation of smartphone
-                actAssist.getSmartphoneAndActivties().flatMap(pair -> {
-                    actAssist.setSmartphone(pair.second);
-                    actAssist.getSmartphone().setLogging(true);
-                    actAssist.getSmartphone().setLoggedActivity(
-                            actAssist.getActivityUrl(mCurrentActivity, pair.first));
-                    return actAssist.putSmartphoneAPI();
-                }).subscribe(
-                        smartphone -> {
-                            actAssist.setSmartphone(smartphone);
-                            homeFragment.setServerStatus(SERVER_STATUS_ONLINE);
-                        },
-                        throwable -> {
-                            if (throwable instanceof ConnectException) {
-                                homeFragment.setServerStatus(SERVER_STATUS_OFFLINE);
-                            }
-                            actAssist.getSmartphone().setLogging(true);
-                        }
-                );
+            try {
+                activityFile.createActivity(getApplicationContext(),  mSelectedActivity, getTimeZone());
+                mCurrentActivity = mSelectedActivity;
+            } catch (Exception e) {
+                createToast("sth went wrong writing activity file");
             }
+
+            mIsLogging = true;
+            // update external representation of smartphone
+            actAssist.getSmartphoneAndActivties().flatMap(pair -> {
+                actAssist.updateLocalSmartphone(pair.second);
+                actAssist.getLocalSmartphone().setLogging(true);
+                actAssist.getLocalSmartphone().setLoggedActivity(
+                        actAssist.getActivityUrl(mCurrentActivity, pair.first));
+                return actAssist.putRemoteSmartphone();
+            }).subscribe(
+                    smartphone -> {
+                        actAssist.updateLocalSmartphone(smartphone);
+                        setServerState(SERVER_STATUS_ONLINE);
+                    },
+                    throwable -> {
+                        if (throwable instanceof ConnectException) {
+                            setServerState(SERVER_STATUS_OFFLINE);
+                        }
+                        actAssist.getLocalSmartphone().setLogging(true);
+                    }
+            );
         } else {
             NotificationHandler.removeNotification(mMainActivity);
-            if (actAssist.isExperimentConducted()) {
-                try {
-                    activityFile.finishActivity(
-                            homeFragment.requireActivity().getApplicationContext(),
-                            mSelectedActivity);
-                    mCurrentActivity = null;
-                } catch (Exception e) {
-                    createToast("sth went wrong writing activity file");
-                }
-
-                // update external representation of smartphone
-                actAssist.getSmartphoneAPI().flatMap(smartphone -> {
-                    actAssist.setSmartphone(smartphone);
-                    actAssist.getSmartphone().setLogging(false);
-                    actAssist.getSmartphone().setLoggedActivity("");
-                    return actAssist.putSmartphoneAPI();
-                }).subscribe(
-                        smartphone -> {
-                            actAssist.setSmartphone(smartphone);
-                            homeFragment.setServerStatus(SERVER_STATUS_ONLINE);
-                        },
-                        throwable -> {
-                            actAssist.getSmartphone().setLogging(false);
-                            actAssist.getSmartphone().setLoggedActivity("");
-                            if (throwable instanceof ConnectException) {
-                                homeFragment.setServerStatus(SERVER_STATUS_OFFLINE);
-                            }
-                        });
+            try {
+                activityFile.finishActivity(
+                        mMainActivity.getApplicationContext(),
+                        mSelectedActivity,
+                        getTimeZone()
+                        );
+                mCurrentActivity = null;
+            } catch (Exception e) {
+                createToast("sth went wrong writing activity file");
             }
+
+            mIsLogging = false;
+            // update external representation of smartphone
+            actAssist.getRemoteSmartphone().flatMap(smartphone -> {
+                actAssist.updateLocalSmartphone(smartphone);
+                actAssist.getLocalSmartphone().setLogging(false);
+                actAssist.getLocalSmartphone().setLoggedActivity("");
+                return actAssist.putRemoteSmartphone();
+            }).subscribe(
+                    smartphone -> {
+                        actAssist.updateLocalSmartphone(smartphone);
+                        setServerState(SERVER_STATUS_ONLINE);
+                    },
+                    throwable -> {
+                        actAssist.getLocalSmartphone().setLogging(false);
+                        actAssist.getLocalSmartphone().setLoggedActivity("");
+                        if (throwable instanceof ConnectException) {
+                            setServerState(SERVER_STATUS_OFFLINE);
+                        }
+                    });
         }
     }
 

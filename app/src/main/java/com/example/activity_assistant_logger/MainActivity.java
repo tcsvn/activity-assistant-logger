@@ -10,33 +10,30 @@ import androidx.core.app.ActivityCompat;
 
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.ViewModelProvider;
 
-import android.os.Handler;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
+
+import com.google.android.gms.common.api.CommonStatusCodes;
+import com.google.android.gms.vision.barcode.Barcode;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationBarView;
 import static android.Manifest.permission.INTERNET;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public class MainActivity extends AppCompatActivity{
     private static final int PERMISSION_REQUEST_CODE=200;
     private Controller controller;
     private BottomNavigationView bottomNavigation;
-    // debug below
     final Fragment mHomeFragment = new HomeFragment();
     final Fragment mWeekFragment = new WeekFragment();
     final FragmentManager mFragmentManager = getSupportFragmentManager();
     Fragment mActiveFragment = mHomeFragment;
 
-//    public void openFragment(Fragment fragment) {
-//        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-//        transaction.replace(R.id.container, fragment);
-//        transaction.addToBackStack(null);
-//        transaction.commit();
-//    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,7 +46,6 @@ public class MainActivity extends AppCompatActivity{
                     @Override public boolean onNavigationItemSelected(@NonNull MenuItem item){
                         switch (item.getItemId()){
                             case R.id.navigation_home:
-                                //openFragment(HomeFragment.newInstance("", ""));
                                 mFragmentManager.beginTransaction()
                                                 .hide(mActiveFragment)
                                                 .show(mHomeFragment)
@@ -83,7 +79,6 @@ public class MainActivity extends AppCompatActivity{
         mFragmentManager.beginTransaction()
                         .add(R.id.container, mHomeFragment, "home")
                         .commit();
-        //openFragment(HomeFragment.newInstance("", ""));
     }
 
     @Override
@@ -112,13 +107,16 @@ public class MainActivity extends AppCompatActivity{
 
     @Override
     public void onNewIntent(Intent intent){
-        /** is called for every opening of the main activity
+        /** Is called for every opening of the main activity
          *  is used for getting a notification
-         *  TODO only works if application was totally minimized
+         *  TODO only works if application was minimized and not completely removed
          */
+        createToast("DEBUG: Intent 1");
         super.onNewIntent(intent);
+        createToast("DEBUG: Intent 2");
         try{
             if (NotificationHandler.isStartedFromNotification(intent)) {
+                createToast("DEBUG: Intent 2");
                 controller.openedFromNotification(
                         intent.getStringExtra("currentActivity"));
             }
@@ -128,5 +126,31 @@ public class MainActivity extends AppCompatActivity{
         }
     }
 
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data){
+        /** The BarcodeCaptureActivity scanned sth. leads to calling this method
+         * also the ActivityFile upon return leads to calling this but nothing is done as
+         * the Intent data is null
+         * */
+        if (resultCode == CommonStatusCodes.SUCCESS && data!= null) {
+             try {
+                 // case of the activity with intent
+                 Barcode barcode = data.getParcelableExtra("barcode");
+                 String connectionInformation = barcode.displayValue;
+                 try {
+                     controller.onDataFromQRCode(
+                             new JSONObject(connectionInformation)
+                     );
 
+                 } catch (JSONException e) {
+                     e.printStackTrace();
+                 }
+             }catch (Exception e){
+                String currentActivity = data.getStringExtra("currentActivity");
+                createToast("got from notification: " + currentActivity);
+             }
+             return;
+        }
+        super.onActivityResult(requestCode, resultCode, data);
+    }
 }

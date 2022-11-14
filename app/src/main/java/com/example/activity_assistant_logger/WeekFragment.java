@@ -213,8 +213,8 @@ public class WeekFragment extends Fragment implements MonthLoader.MonthChangeLis
                 Calendar.getInstance());
         EditText inputStarttime = (EditText) viewInflated.findViewById(R.id.ca_start_time);
         EditText inputEndtime = (EditText) viewInflated.findViewById(R.id.ca_end_time);
-        inputStarttime.setText(ActivityFileHandler.cal2Str(event.getStartTime(), Locale.getDefault()));
-        inputEndtime.setText(ActivityFileHandler.cal2Str(event.getEndTime(), Locale.getDefault()));
+        inputStarttime.setText(ActivityFileHandler.cal2Str(event.getStartTime()));
+        inputEndtime.setText(ActivityFileHandler.cal2Str(event.getEndTime()));
 
         builder.setView(viewInflated)
                .setPositiveButton("Submit", new DialogInterface.OnClickListener() {
@@ -225,8 +225,8 @@ public class WeekFragment extends Fragment implements MonthLoader.MonthChangeLis
                         Calendar st = null;
                         Calendar et = null;
                         try {
-                            st = ActivityFileHandler.str2Cal(starttime, Locale.getDefault());
-                            et = ActivityFileHandler.str2Cal(endtime, Locale.getDefault());
+                            st = ActivityFileHandler.str2Cal(starttime);
+                            et = ActivityFileHandler.str2Cal(endtime);
                         } catch (ParseException e){
                             Toast.makeText(appContext, "No valid Timestamp given...", Toast.LENGTH_SHORT).show();
                             return;
@@ -276,9 +276,9 @@ public class WeekFragment extends Fragment implements MonthLoader.MonthChangeLis
         TextView title = (TextView) viewInflated.findViewById(R.id.title_weekview_dialog);
         Button btnDelete = (Button) viewInflated.findViewById(R.id.btn_weekview_delete);
 
-        String tmp1 = ActivityFileHandler.cal2Str(event.getStartTime(), Locale.getDefault());
+        String tmp1 = ActivityFileHandler.cal2Str(event.getStartTime());
         inputStarttime.setText(tmp1);
-        inputEndtime.setText(ActivityFileHandler.cal2Str(event.getEndTime(), Locale.getDefault()));
+        inputEndtime.setText(ActivityFileHandler.cal2Str(event.getEndTime()));
         title.setText("Edit :" + event.getName());
 
 
@@ -292,8 +292,8 @@ public class WeekFragment extends Fragment implements MonthLoader.MonthChangeLis
                         Calendar st = null;
                         Calendar et = null;
                         try {
-                            st = ActivityFileHandler.str2Cal(starttime, Locale.getDefault());
-                            et = ActivityFileHandler.str2Cal(endtime, Locale.getDefault());
+                            st = ActivityFileHandler.str2Cal(starttime);
+                            et = ActivityFileHandler.str2Cal(endtime);
                         } catch (ParseException e){
                             Toast.makeText(appContext, "No valid Timestamp given...", Toast.LENGTH_SHORT).show();
                             return;
@@ -347,7 +347,7 @@ public class WeekFragment extends Fragment implements MonthLoader.MonthChangeLis
         // Filter the events for correct year and month
         List<WeekViewEvent> notInMonth = new ArrayList<WeekViewEvent>();
         for (int i =0; i < events.size(); i++){
-             System.out.println(ActivityFileHandler.cal2Str(events.get(i).getStartTime(), Locale.getDefault()));
+             System.out.println(ActivityFileHandler.cal2Str(events.get(i).getStartTime()));
              int year = events.get(i).getStartTime().get(Calendar.YEAR);
              int month = events.get(i).getStartTime().get(Calendar.MONTH)+1; // WTF calendar
              if (year != newYear || month != newMonth){

@@ -35,7 +35,6 @@
         app:todayBackgroundColor="#1848adff"
         app:todayHeaderTextColor="#2789e4"
         app:zoomFocusPointEnabled="false" />
-        <!--asdf -->
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         style="@style/Widget.Material3.FloatingActionButton.Primary"

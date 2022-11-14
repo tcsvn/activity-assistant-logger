@@ -3,38 +3,31 @@ package com.example.activity_assistant_logger.actassistapi;
 
 import android.util.Pair;
 
-import com.android.volley.RequestQueue;
-
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.File;
+import java.io.IOException;
 import java.io.Serializable;
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
 
+import com.example.activity_assistant_logger.ActivityFileHandler;
 import com.example.activity_assistant_logger.Controller;
-import com.google.android.gms.common.SignInButton;
-import com.google.android.gms.common.api.Api;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.annotations.NonNull;
-import io.reactivex.rxjava3.core.Scheduler;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.core.SingleObserver;
-import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava3.RxJava3CallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
@@ -47,50 +40,40 @@ public class ActAssistApi implements Serializable {
     public final static String URL_PERSON = "url_person";
     public final static String USERNAME = "username";
     public final static String PASSWORD = "password";
-    public final static String EXP_RUNNING = "experiment_running";
-    public final static String EXP_PAUSED = "experiment_paused";
-    public final static String EXP_NOT_RUNNING = "experiment_not_running";
 
-    private transient Controller controller;
-    private String url_api;
-    private String password;
-    private String user_name;
+    private transient Controller mController;
+    final private String mAPIUrl;
+    final private String mPass;
+    final private String mUserName;
     private transient Retrofit retrofit;
-    private Smartphone smartphone;
+    private Smartphone mSmartphone;
     private List <Activity> activities;
     private ArrayList <String> activityNames;
-    private String experimentRunning;
     private String activityFileUrl;
-    //private CompositeDisposable compDisp;
+    private String mTimeZone;
 
-    public ActAssistApi(Controller controller, String url_api, String user_name, String password) {
-        this.controller = controller;
-        this.user_name = user_name;
-        this.password = password;
-        this.url_api = url_api;
-        this.smartphone = null;
+    // TODO critical, get server id over QR-Code
+    final private int mServerId = 1;
 
-        // intialize http client
-        this.retrofit = new Retrofit.Builder()
-                .baseUrl(url_api)
-                .addConverterFactory(GsonConverterFactory.create())
-                .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
-                .build();
-        //compDisp = new CompositeDisposable();
-        // DEBUG START
-        this.experimentRunning = EXP_RUNNING;
-        // DEBUG END
+    public ActAssistApi(Controller controller, String APIUrl, String userName, String password) {
+        mController = controller;
+        mUserName = userName;
+        mPass = password;
+        mAPIUrl = APIUrl;
+        mSmartphone = null;
+
+        // Initialize http client
+        initRetrofit();
+
     }
     public void initRetrofit(){
-         this.retrofit = new Retrofit.Builder()
-                .baseUrl(url_api)
+         retrofit = new Retrofit.Builder()
+                .baseUrl(mAPIUrl)
                 .addConverterFactory(GsonConverterFactory.create())
                 .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
                 .build();
     }
-    public void setController(Controller con){
-        this.controller = con;
-    }
+
 
 ///__JSON__------------------------------------------------------------------------------------------
     public JSONObject serializeToJSON(){
@@ -98,10 +81,11 @@ public class ActAssistApi implements Serializable {
         Gson gson = builder.create();
         JSONObject jsonObject = new JSONObject();
         try {
-            jsonObject.put("user_name", user_name);
-            jsonObject.put("password", password);
-            jsonObject.put("url_api", url_api);
-            jsonObject.put("smartphone_json", gson.toJson(smartphone));
+            jsonObject.put("user_name", mUserName);
+            jsonObject.put("password", mPass);
+            jsonObject.put("url_api", mAPIUrl);
+            jsonObject.put("time_zone", mTimeZone);
+            jsonObject.put("smartphone_json", gson.toJson(mSmartphone));
             jsonObject.put("activity_list", activityNames);
             jsonObject.put("activity_file_url", activityFileUrl);
         } catch (JSONException e) {
@@ -122,23 +106,50 @@ public class ActAssistApi implements Serializable {
         }catch (JSONException e){
             newApi.setActivityFileUrl("");
         }
-        newApi.setActivities((ArrayList<String>) activities);
+        newApi.updateLocalActivities((ArrayList<String>) activities);
         Gson gson = new GsonBuilder().create();
         try {
-            newApi.setSmartphone(gson.fromJson(
+            newApi.updateLocalSmartphone(gson.fromJson(
                     jsonObject.getString("smartphone_json"),
                     Smartphone.class
             ));
         }catch(Exception e){
 
         }
+        try {
+            newApi.setLocalTimeZone(jsonObject.getString("time_zone"));
+        }catch (JSONException e){};
+
         return newApi;
     }
 
 
 // GETTER/SETTER for internal representation
-    public Smartphone getSmartphone(){
-        return smartphone;
+    public TimeZone getLocalTimeZone(){
+        if (mTimeZone != null){
+            return TimeZone.getTimeZone(mTimeZone);
+        }
+        else{
+            return TimeZone.getDefault();
+        }
+    }
+    public void setLocalTimeZone(String timeZone){
+        boolean isTimeZoneValid = false;
+        for (String str : TimeZone.getAvailableIDs()) {
+            if (str.equals(timeZone)) {
+                isTimeZoneValid = true;
+                break;
+            }
+        }
+        if (!isTimeZoneValid){
+            mController.createToast("No valid time zone was given. ERROR THIS IS VERY BAD!");
+            return;
+        }
+        mTimeZone = timeZone;
+    }
+
+    public Smartphone getLocalSmartphone(){
+        return mSmartphone;
     }
 
     public List<String> getActivities(){
@@ -148,54 +159,40 @@ public class ActAssistApi implements Serializable {
     public String getActivityFileUrl(){
         return this.activityFileUrl;
     }
+
     public void setActivityFileUrl(String url){
         this.activityFileUrl = url;
     }
-    public void setSmartphone(Smartphone sm){
-        smartphone = sm;
-        smartphone.setName(controller.getDeviceName());
-        smartphone.setLogging(controller.getLogging());
-        smartphone.setLoggedActivity(controller.getLoggedActivity());
+
+    public void updateLocalSmartphone(Smartphone sm){
+        mSmartphone = sm;
+        mSmartphone.setName(mController.getDeviceName());
+        mSmartphone.setLogging(mController.getLogging());
+        mSmartphone.setLoggedActivity(mController.getLoggedActivity());
     }
 
     public String getActivityUrl(String currentActivity, List <Activity> acts){
         String actUrl = "";
-                            for (int i = 0; i < acts.size(); i++){
-                                if(acts.get(i).getName().equals(currentActivity)){
-                                    actUrl = createActivityUrl(acts.get(i));
-                                    break;
-                                }
-                            }
-                            return actUrl;
+        for (int i = 0; i < acts.size(); i++){
+            if(acts.get(i).getName().equals(currentActivity)){
+                actUrl = createActivityUrl(acts.get(i));
+                break;
+            }
+        }
+        return actUrl;
     }
 
     public String createActivityUrl(Activity act){
-        return url_api + "activities/" + act.getId() + "/";
+        // TODO refactor, do not hardcode these urls
+        return mAPIUrl + "activities/" + act.getId() + "/";
     }
 
-    public void setActivities(List<Activity> activities){
+    public void updateLocalActivities(List<Activity> activities){
         this.activityNames = this.extractNames(activities);
     }
 
-    public void setActivities(ArrayList<String> activities){
+    public void updateLocalActivities(ArrayList<String> activities){
         this.activityNames = activities;
-    }
-
-    public boolean isExperimentConducted(){
-        return this.experimentRunning.equals(EXP_RUNNING)
-                || this.experimentRunning.equals((EXP_PAUSED));
-    }
-
-    public boolean isExperimentRunning(){
-        return this.experimentRunning.equals(EXP_RUNNING);
-    }
-
-    public void setExperiment(String experimentState){
-        if (experimentState.equals(EXP_PAUSED)
-                || experimentState.equals(EXP_NOT_RUNNING)
-                || experimentState.equals(EXP_RUNNING)){
-            this.experimentRunning = experimentState;
-        }
     }
 
 // API request
@@ -215,7 +212,7 @@ public class ActAssistApi implements Serializable {
     public Single<Pair <List<Activity>, Smartphone >> getSmartphonePersonAndActivties(){
         ApiService apiService = retrofit.create(ApiService.class);
         Single <List<Activity>> actListSingle = apiService.getActivities();
-        Single <Smartphone> smSingle = apiService.getSmartphone(smartphone.getId());
+        Single <Smartphone> smSingle = apiService.getSmartphone(mSmartphone.getId());
         return actListSingle.zipWith(smSingle, Pair::new)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread());
@@ -228,7 +225,7 @@ public class ActAssistApi implements Serializable {
     public Single<Pair <List<Activity>, Smartphone >> getSmartphoneAndActivties(){
         ApiService apiService = retrofit.create(ApiService.class);
         Single <List<Activity>> actListSingle = apiService.getActivities();
-        Single <Smartphone> smSingle = apiService.getSmartphone(smartphone.getId());
+        Single <Smartphone> smSingle = apiService.getSmartphone(mSmartphone.getId());
         return actListSingle.zipWith(smSingle, Pair::new)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread());
@@ -243,16 +240,16 @@ public class ActAssistApi implements Serializable {
                 .observeOn(AndroidSchedulers.mainThread());
     }
 
-    public Smartphone createNewSmartphone(String personUrl){
+    public Smartphone createNewLocalSmartphone(String personUrl){
         Smartphone sm = new Smartphone();
         sm.setPerson(personUrl);
-        sm.setName(controller.getDeviceName());
+        sm.setName(mController.getDeviceName());
         sm.setSynchronized(false);
         sm.setLogging(false);
         return sm;
     }
 
-    public Single<Pair <List<Activity>, Smartphone >> createSmartphoneAndGetActivties(Smartphone sm){
+    public Single<Pair <List<Activity>, Smartphone >> createSmartphoneAndGetActivities(Smartphone sm){
         ApiService apiService = retrofit.create(ApiService.class);
         Single <List<Activity>> actListSingle = apiService.getActivities();
         Single <Smartphone> smSingle = apiService.createSmartphone(
@@ -283,10 +280,30 @@ public class ActAssistApi implements Serializable {
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread());
     }
+    public void downloadActivityFile(String activityFileUrl, ActivityFileHandler activityFile){
+        downloadActivityFile(activityFileUrl).subscribe(new SingleObserver<ResponseBody>() {
+                @Override
+                public void onSubscribe(@NonNull Disposable d) {}
+
+                @Override
+                public void onSuccess(@NonNull ResponseBody responseBody) {
+                    try {
+                        activityFile.replaceActivityFile(mController.getApplicationContext(), responseBody);
+                    } catch (IOException e) {
+                        mController.createToast("Successfully downloaded activity file but couldn't save");
+                    }
+                }
+
+                @Override
+                public void onError(@NonNull Throwable e) {
+                    mController.createToast("Could not download activity file.");
+                }
+        });
+    }
 
     public int getPersonId(){
         // TODO hacky way
-        String [] url = smartphone.getPerson().split("/");
+        String [] url = mSmartphone.getPerson().split("/");
         try {
             return Integer.parseInt(url[url.length - 2]);
         }catch (Exception e){
@@ -320,7 +337,7 @@ public class ActAssistApi implements Serializable {
                 .observeOn(AndroidSchedulers.mainThread());
     }
 
-    public Single<ResponseBody> deleteSmartphoneAPI(Smartphone smartphone) {
+    public Single<ResponseBody> deleteRemoteSmartphone(Smartphone smartphone) {
         /** delete a smartphone object
         */
         ApiService apiService = retrofit.create(ApiService.class);
@@ -329,27 +346,56 @@ public class ActAssistApi implements Serializable {
                 .observeOn(AndroidSchedulers.mainThread());
     }
 
-    public Single<Smartphone> getSmartphoneAPI() {
+    public Single<Smartphone> getRemoteSmartphone() {
         /** puts a smartphone object
         */
         ApiService apiService = retrofit.create(ApiService.class);
-        return apiService.getSmartphone(smartphone.getId())
+        return apiService.getSmartphone(mSmartphone.getId())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread());
     }
 
-    public Single<Smartphone> putSmartphoneAPI() {
+    public Single<Smartphone> putRemoteSmartphone() {
         /** puts a smartphone object
         */
         ApiService apiService = retrofit.create(ApiService.class);
-        smartphone.setLogging(controller.getLogging());
-        if (controller.getLoggedActivity() == null){
-            smartphone.setLoggedActivity("");
+        mSmartphone.setLogging(mController.getLogging());
+        if (mController.getLoggedActivity() == null){
+            mSmartphone.setLoggedActivity("");
         }
-        return apiService.putSmartphone(smartphone.getId(), smartphone)
+        return apiService.putSmartphone(mSmartphone.getId(), mSmartphone)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread());
     }
+
+    public void putRemoteSmartphone(boolean update){
+        putRemoteSmartphone().subscribe(
+                smartphone1 -> {
+                     if (update) {
+                        updateLocalSmartphone(mSmartphone);
+                    }
+                },
+                throwable -> {}
+        );
+    }
+
+    public Single<Server> getRemoteServer(){
+        ApiService apiService = retrofit.create(ApiService.class);
+        return apiService.getServer(mServerId)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread());
+    }
+
+    public void getRemoteTimeZone(){
+        getRemoteServer().subscribe(
+                server -> {
+                    String tz = server.getTimeZone();
+                    setLocalTimeZone(tz);
+                },
+                throwable -> {}
+        );
+    }
+
 
     public void getActivitiesAPI() {
         // create an instance of the ApiService
@@ -369,13 +415,13 @@ public class ActAssistApi implements Serializable {
             public void onSuccess(@NonNull List<Activity> acts) {
                        activities = acts;
                        activityNames = extractNames(activities);
-                       controller.onGetActivitiesSuccess(activityNames);
+                       mController.onGetActivitiesSuccess(activityNames);
                    }
 
-                   @Override
-                   public void onError(@NonNull Throwable e) {
-                       controller.onFailure("GET activities failed");
-                   }
+               @Override
+               public void onError(@NonNull Throwable e) {
+                   mController.onFailure("GET activities failed");
+               }
                });
     }
 

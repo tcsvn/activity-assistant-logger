@@ -6,50 +6,15 @@ import androidx.fragment.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Color;
-import android.os.Bundle;
-
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.ViewModelProvider;
-
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.Switch;
 import android.widget.TextView;
-import android.widget.Toast;
-
-import com.google.android.gms.common.api.CommonStatusCodes;
-import com.google.android.gms.vision.barcode.Barcode;
-
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.util.ArrayList;
-
-import com.example.activity_assistant_logger.actassistapi.ActAssistApi;
-import com.google.android.material.bottomnavigation.BottomNavigationView;
-import com.google.android.material.navigation.NavigationBarView;
-
-import static android.Manifest.permission.INTERNET;
-import static com.example.activity_assistant_logger.Controller.SERVER_STATUS_ONLINE;
-
-
 
 
 /**
@@ -64,8 +29,8 @@ public class HomeFragment extends Fragment implements MySpinner.OnItemSelectedLi
     final String STATE_INITIAL = "initial";
 
 
-
-    Button qrcode_scan;
+    Button mBtnScan;
+    Button mBtnSync;
     TextView qrcode_text;
     TextView deviceStatus;
     TextView serverStatus;
@@ -133,55 +98,65 @@ public class HomeFragment extends Fragment implements MySpinner.OnItemSelectedLi
         /* https://developer.android.com/guide/fragments/lifecycle
            instantiate callbacks
         * */
-
-        // Retrieve controller
-
         controller.setHomeFragment(this);
 
-        qrcode_scan = view.findViewById(R.id.btn_scan_qrcode);
+        // Get
         qrcode_text = view.findViewById(R.id.textView_qrcode);
         deviceStatus = view.findViewById(R.id.device_status);
         serverStatus = view.findViewById(R.id.server_status);
 
+        // Get active components
         switch_logging = view.findViewById(R.id.switch_logging);
         mySpinner_activity = view.findViewById(R.id.spinner_activity);
         mySpinner_activity.setOnItemSelectedListener(this);
+        mBtnScan = view.findViewById(R.id.btn_scan_qrcode);
+        mBtnSync = view.findViewById(R.id.btn_sync);
 
         // Register all callbacks
         switch_logging.setOnClickListener(this);
+        mBtnScan.setOnClickListener(this);
+        mBtnSync.setOnClickListener(this);
 
         populateValuesFromController();
 
     }
 
     public void populateValuesFromController(){
-         setReloadSpinnerActivity((ArrayList<String>) controller.getActivities());
+        try {
+            setReloadSpinnerActivity((ArrayList<String>) controller.getActivities());
+        }catch (NullPointerException e){
+            // The case when device is not connected to a server
+        };
         // If new controller than this is false, else the previous state
         switch_logging.setChecked(controller.getLogging());
-        //setServerStatus(controller.getServerStatus());
-        //setDeviceStatus(DEVICE_STATUS_REGISTERED);
+        setServerStatus(controller.getServerState());
+        setDeviceStatus(controller.getDeviceState());
     }
 
     @Override
     public void onClick(View view){
         switch (view.getId()){
             case R.id.switch_logging:
-                this.switchLogging(view);
+                this.onSwitchLogging(view);
                 break;
             case R.id.btn_scan_qrcode:
-                this.btnScanQrCode(view);
+                this.onBtnScan(view);
                 break;
-            case R.id.button2:
-                this.btnSynchronize(view);
+            case R.id.btn_sync:
+                this.onBtnSync(view);
                 break;
         }
     }
 
 
 
-        //__GETTER/SETTER----------------------------------------------------------------------------------
+    //__GETTER/SETTER----------------------------------------------------------------------------------
     public String getSelectedActivity(){
         return mySpinner_activity.getSelectedItem().toString();
+    }
+
+    public boolean getSwitchChecked(){
+        return switch_logging.isChecked();
     }
 
     public void setServerStatus(String new_status){
@@ -201,13 +176,6 @@ public class HomeFragment extends Fragment implements MySpinner.OnItemSelectedLi
 
     public void setSwitchLogging(Boolean val){
         switch_logging.setChecked(val);
-        controller.setLogging(val);
-        if (val){
-            controller.createNotification();
-        }
-        else{
-            controller.removeNotification();
-        }
     }
 
     public void setDeviceStatus(String new_status){
@@ -218,19 +186,15 @@ public class HomeFragment extends Fragment implements MySpinner.OnItemSelectedLi
             // TODO refactor, set to primary color
             //deviceStatus.setTextColor(ContextCompat.getColor(getApplicationContext(), R.color.primaryColor));
             qrcode_text.setText("");
-            qrcode_scan.setText("decouple");
+            mBtnScan.setText("decouple");
         }
         else if (new_status == Controller.DEVICE_STATUS_UNCONFIGURED){
             // set color to orange
             deviceStatus.setTextColor(Color.parseColor("#d3d3d3"));
             //deviceStatus.setTextColor(Color.parseColor("#ff5722"));
-            qrcode_scan.setText("scan");
+            mBtnScan.setText("scan");
             qrcode_text.setText("qrcode");
         }
-    }
-
-    public boolean getSwitchChecked(){
-        return switch_logging.isChecked();
     }
 
 //__Spinner__--------------------------------------------------------------------------------------
@@ -298,73 +262,23 @@ public class HomeFragment extends Fragment implements MySpinner.OnItemSelectedLi
     //    }
     //}
 
-    public void btnSynchronize(View view){
+    public void onBtnSync(View view){
         controller.onBtnSynchronize();
     }
 
-    public void btnScanQrCode(View view) {
-        String btntext = (String) qrcode_scan.getText();
-        if( btntext.equals("scan")){
-            if (!DEBUG){
-                controller.onBtnScanQRCode();
-            }
-            else {
-                // DEBUG FROM HERE
-                JSONObject obj = new JSONObject();
-                try {
-                    obj.put(ActAssistApi.URL_API,
-                            "http://192.168.0.185:8000/api/");
-                    obj.put(ActAssistApi.SMARTPHONE_ID,
-                            1);
-                    obj.put(ActAssistApi.URL_PERSON,
-                            "persons/1/");
-                    obj.put(ActAssistApi.USERNAME,
-                            "admin");
-                    obj.put(ActAssistApi.PASSWORD,
-                            "asdf");
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-                controller.receivedDataFromQRCode(obj);
-                // DEBUG END
-            }
-        }
-        else{
-            controller.onBtnDecouple();
+    public void onBtnScan(View view) {
+        switch ((String) mBtnScan.getText()){
+            case "scan":
+                controller.onScan();
+                break;
+            case "decouple":
+                controller.onDecouple();
+                break;
         }
     }
 
-    public void switchLogging(View view){
-        controller.switchLoggingToggled(switch_logging.isChecked());
-    }
-
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data){
-        /** The BarcodeCaptureActivity scanned sth. leads to calling this method
-         * also the ActivityFile upon return leads to calling this but nothing is done as
-         * the Intent data is null
-         * */
-         if (resultCode == CommonStatusCodes.SUCCESS && data!= null) {
-             try {
-                 // case of the activity with intent
-                 Barcode barcode = data.getParcelableExtra("barcode");
-                 String connectionInformation = barcode.displayValue;
-                 try {
-                     controller.receivedDataFromQRCode(
-                             new JSONObject(connectionInformation)
-                     );
-
-                 } catch (JSONException e) {
-                     e.printStackTrace();
-                 }
-             }catch (Exception e){
-                String currentActivity = data.getStringExtra("currentActivity");
-                controller.createToast("got forom notification: " + currentActivity);
-             }
-         }
-         else {
-            super.onActivityResult(requestCode, resultCode, data);
-        }
+    public void onSwitchLogging(View view){
+        controller.onSwitchToggled(switch_logging.isChecked());
     }
 
     @Override
@@ -379,9 +293,6 @@ public class HomeFragment extends Fragment implements MySpinner.OnItemSelectedLi
     @Override
     public void onNothingSelected(AdapterView<?> parent) {
         System.out.println("");
-
     }
-
-
 
 }
