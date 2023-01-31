@@ -20,8 +20,7 @@ import android.view.*;
 import android.widget.OverScroller;
 
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import java.lang.Math;
 import java.util.*;
 import com.example.activity_assistant_logger.R;
 
@@ -2807,10 +2806,13 @@ public class WeekView extends View {
      */
     private class WeekViewGestureListener implements ScaleGestureDetector.OnScaleGestureListener {
         float mFocusedPointY;
+        private PointF mPrevOrigin;
+        private int mUpdateErrorState;
 
         @Override
         public void onScaleEnd(ScaleGestureDetector detector) {
             mIsZooming = false;
+            System.out.println("_______________________________________");
             if (mZoomEndListener != null) {
                 mZoomEndListener.onZoomEnd(mHourHeight);
             }
@@ -2829,22 +2831,58 @@ public class WeekView extends View {
                 // Grab focus
                 mFocusedPointY = detector.getFocusY();
             }
+            mPrevOrigin = new PointF(0f, 0f);
+            mPrevOrigin.set(mCurrentOrigin);
+
+            mUpdateErrorState = 0;
 
             return true;
         }
-
         @Override
         public boolean onScale(ScaleGestureDetector detector) {
-            final float scale = detector.getScaleFactor();
+            float scale = detector.getScaleFactor();
 
-            mNewHourHeight = Math.round(mHourHeight * scale);
+            // Fix
+            if (scale == 1.0){
+                return true;
+            }
 
-            // Calculating difference
-            float diffY = mFocusedPointY - mCurrentOrigin.y;
-            // Scaling difference
-            diffY = diffY * scale - diffY;
-            // Updating week view origin
-            mCurrentOrigin.y -= diffY;
+            // Constant scaling factor is more reliable than user detected scale
+            if (scale > 1.0) {
+                scale = (float) 1.10;
+            }
+            else {
+               scale = (float) 0.90;
+            }
+
+            float diffY =0;
+            if (Math.abs(mPrevOrigin.y - mCurrentOrigin.y) > (Math.abs(mPrevOrigin.y*scale)+10)){
+                // Smooth out jumps by resetting to the previous origin as sometimes
+                // the origin is set outside of this callback
+                mCurrentOrigin.y = mPrevOrigin.y+1;
+            }
+            if ((mPrevOrigin.y == mCurrentOrigin.y)){
+                mPrevOrigin.y = mCurrentOrigin.y;
+                if(scale > 0) {
+                    mNewHourHeight = mHourHeight + 1;
+                    mCurrentOrigin.y -= 1;
+                }
+                else {
+                    mNewHourHeight = mHourHeight -1;
+                    mCurrentOrigin.y += 1;
+                }
+            }
+            else{
+                mNewHourHeight = Math.round(mHourHeight * scale);
+                // Calculating difference
+                if ((mMinHourHeight < mNewHourHeight) && (mNewHourHeight < mMaxHourHeight)){
+                    diffY = mFocusedPointY - mCurrentOrigin.y;
+                    // Scaling difference
+                    diffY = diffY * scale - diffY;
+                }
+                mPrevOrigin.y = mCurrentOrigin.y;
+                mCurrentOrigin.y -= diffY;
+            }
 
             invalidate();
             return true;

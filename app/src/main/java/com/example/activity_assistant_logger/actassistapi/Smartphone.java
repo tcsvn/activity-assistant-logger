@@ -63,6 +63,8 @@ public class Smartphone {
     }
 
     public void setLoggedActivity(String loggedActivity) {
+        /* IMPORTANT: the logged Activity has to be an URL
+        * */
         this.loggedActivity = loggedActivity;
     }
 

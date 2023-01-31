@@ -341,8 +341,7 @@ public class WeekFragment extends Fragment implements MonthLoader.MonthChangeLis
 
     @Override
     public List<? extends WeekViewEvent> onMonthChange(int newYear, int newMonth) {
-        ActivityFileHandler actFile = new ActivityFileHandler(this.getActivity());
-        ArrayList<WeekViewEvent> events = (ArrayList<WeekViewEvent>) actFile.getActivitiesAsEvents(requireActivity());
+        ArrayList<WeekViewEvent> events = (ArrayList<WeekViewEvent>) controller.getActivitiesAsEvents();
 
         // Filter the events for correct year and month
         List<WeekViewEvent> notInMonth = new ArrayList<WeekViewEvent>();

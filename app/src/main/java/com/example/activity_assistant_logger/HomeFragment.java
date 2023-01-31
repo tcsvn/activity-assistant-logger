@@ -35,7 +35,6 @@ public class HomeFragment extends Fragment implements MySpinner.OnItemSelectedLi
     TextView deviceStatus;
     TextView serverStatus;
     MySpinner mySpinner_activity;
-    private final Boolean DEBUG = false;
     private SwitchCompat switch_logging;
     private String device_status;
     private String CHANNEL_ID = "0";
@@ -118,19 +117,20 @@ public class HomeFragment extends Fragment implements MySpinner.OnItemSelectedLi
         mBtnSync.setOnClickListener(this);
 
         populateValuesFromController();
-
     }
 
     public void populateValuesFromController(){
         try {
-            setReloadSpinnerActivity((ArrayList<String>) controller.getActivities());
+            controller.restoreActivityState();
         }catch (NullPointerException e){
             // The case when device is not connected to a server
         };
         // If new controller than this is false, else the previous state
-        switch_logging.setChecked(controller.getLogging());
+        setSwitchLogging(controller.getLogging());
         setServerStatus(controller.getServerState());
         setDeviceStatus(controller.getDeviceState());
+
+
     }
 
     @Override
@@ -166,8 +166,7 @@ public class HomeFragment extends Fragment implements MySpinner.OnItemSelectedLi
 
         // set the according color
         if(new_status == SERVER_STATUS_ONLINE){
-            // TODO
-            //serverStatus.setTextColor(ContextCompat.getColor(getApplicationContext(), R.attr.colorPrimary));
+            serverStatus.setTextColor(R.color.md_theme_dark_primary);
         }
         else {
             serverStatus.setTextColor(Color.parseColor("#d3d3d3"));
@@ -181,28 +180,20 @@ public class HomeFragment extends Fragment implements MySpinner.OnItemSelectedLi
     public void setDeviceStatus(String new_status){
         device_status = new_status;
         deviceStatus.setText(new_status);
-        // set the color
         if(new_status == Controller.DEVICE_STATUS_REGISTERED){
-            // TODO refactor, set to primary color
-            //deviceStatus.setTextColor(ContextCompat.getColor(getApplicationContext(), R.color.primaryColor));
-            qrcode_text.setText("");
+            deviceStatus.setTextColor(R.color.md_theme_dark_primary);
             mBtnScan.setText("decouple");
+            qrcode_text.setText("");
         }
         else if (new_status == Controller.DEVICE_STATUS_UNCONFIGURED){
-            // set color to orange
             deviceStatus.setTextColor(Color.parseColor("#d3d3d3"));
-            //deviceStatus.setTextColor(Color.parseColor("#ff5722"));
             mBtnScan.setText("scan");
             qrcode_text.setText("qrcode");
         }
     }
 
 //__Spinner__--------------------------------------------------------------------------------------
-    public void reloadSpinners(){
-        setReloadSpinnerActivity(mySpinner_activity.getItemList());
-    }
-
-    public void setReloadSpinnerActivity(ArrayList<String> spinnerArray){
+    public void setSpinnerActivities(ArrayList<String> spinnerArray){
          ArrayAdapter<String> adapter = new ArrayAdapter<String>(
                 this.getActivity(),
                 android.R.layout.simple_spinner_item,
@@ -210,24 +201,11 @@ public class HomeFragment extends Fragment implements MySpinner.OnItemSelectedLi
         );
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         mySpinner_activity.setAdapter(adapter);
-        // TODO check what this does
-        //      I think this was to set the activity to from the server. Is this still needed though?
-        //if(controller.isActAssistConfigured()
-        //        && controller.deviceHasActivity()
-        //        && containsElement(adapter, controller.getDeviceActivityName())){
-        //    int pos = adapter.getPosition(controller.getDeviceActivityName());
-        //    mySpinner_activity.programmaticallySetPosition(pos);
-        //}
     }
 
-    public void setSpinnerActivity(ArrayList<String> activityArray, String currentActivity){
-          ArrayAdapter<String> adapter = new ArrayAdapter<String>(
-                this.getActivity(),
-                android.R.layout.simple_spinner_item,
-                  activityArray
-        );
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        mySpinner_activity.setAdapter(adapter);
+    public void setSpinnerActivities(ArrayList<String> activityArray, String currentActivity){
+        setSpinnerActivities(activityArray);
+        ArrayAdapter<String> adapter = (ArrayAdapter<String>) mySpinner_activity.getAdapter();
         int pos = adapter.getPosition(currentActivity);
         mySpinner_activity.programmaticallySetPosition(pos);
     }
@@ -244,7 +222,7 @@ public class HomeFragment extends Fragment implements MySpinner.OnItemSelectedLi
     public void resetSpinnerLists(){
         /** deletes all items in the spinner and sets it to unconfigured
         * */
-        setReloadSpinnerActivity(new ArrayList<String>(){{ add(SPINNER_INITIAL_VAL); }});
+        setSpinnerActivities(new ArrayList<String>(){{ add(SPINNER_INITIAL_VAL); }});
     }
 
 

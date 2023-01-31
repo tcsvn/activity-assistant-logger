@@ -31,6 +31,7 @@ import androidx.annotation.Nullable;
 public class ConfigHandler {
     //final public String CONNECTION_FILE_NAME = "act_assist.json";
     final public String CONNECTION_FILE_NAME = "test.ser";
+    final public String CURR_ACTIVITY_FN = "curr_activity.ser";
 
 //    public ActAssistApi loadActAssistFromFile(Context appContext, Controller con) throws JSONException, IOException {
 //        String json_as_string = readConnectionDataFile(appContext);
@@ -67,6 +68,17 @@ public class ConfigHandler {
             }
         }
         return tmp;
+    }
+    public void currentActivityToFile(String currAct, Context appContext) throws  IOException {
+         FileOutputStream outputStream;
+            outputStream = appContext.openFileOutput(CONNECTION_FILE_NAME, appContext.MODE_PRIVATE);
+            outputStream.write(currAct.getBytes());
+            outputStream.close();
+    }
+
+    public String currentActivityFromFile(Context appContext){
+        String res = "";
+        return res;
     }
 
     public void dumpActAssistToFile(Context appContext, ActAssistApi actAssist) throws IOException, JSONException {

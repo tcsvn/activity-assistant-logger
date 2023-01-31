@@ -1,7 +1,6 @@
-# activity-assistant Android app
-> Android client for [activity-assistant](https://github.com/tcsvn/activity-assistant). Easily annotate smart home data with your Activities of daily living.
+# Activity Assistant Logger
+> Android client for [Activity Assistant](https://github.com/tcsvn/activity-assistant). Easily annotate Smart Home data with your Activities of Daily Living.
 
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/tcsvn/activity-assistant/Publish%20dev?style=flat-square)
 ![Github Release](https://img.shields.io/github/v/release/tcsvn/activity-assistant-logger?include_prereleases&style=flat-square)
 ![License](https://img.shields.io/pypi/l/pyadlml?style=flat-square)
 
@@ -12,24 +11,24 @@
 
 ## Installation
 
-Get the app via [Play Store](https://google.play.com) or [F-Droid](https://f-droid.org) (to come). The latest release can be fetched by scanning the qrcode, downloading and installing the app with your smartphone.
+Get the app via [Play Store](https://google.play.com) (tbd) or [F-Droid](https://f-droid.org) (tbd). The latest release can be fetched by scanning the qrcode, [download](https://github.com/tcsvn/activity-assistant-logger/releases/download/v0.0.2-alpha/activity-assistant-logger.apk) and installing the application on your device.
 
 <p align="center">
   <img src="https://f-droid.org/badge/get-it-on.png"
       alt="Get it on F-Droid"
       height="80">
-  <img src=media/release-v.0.0.1-alpha.png height="100">
+  <img src=media/release-v.0.0.2-alpha.png height="120">
   <img src="https://play.google.com/intl/en_us/badges/images/generic/en_badge_web_generic.png" 
       alt="Download from Google Play" 
       height="80">  
 </p>
-_For a guide on how to use please refer to activity-assistants documentation (to come)_
+
+_For a guide on how to use please refer to Activity Assistants documentation (to come)_
 
 ## Features
   - [x] Local annotation of ADLs
-  - [x] Synchronization with activity-assistant
-  - [x] Update activity-assistants backend with real-time logging information
-  - [ ] Local editing of activity records 
+  - [x] Synchronize activity file with Activity Assistant
+  - [x] Activity preview and editing using a calendar widget
 
 ## Contributing 
 1. Fork it (<https://github.com/tcsvn/activity-assistant/fork>)
@@ -39,7 +38,7 @@ _For a guide on how to use please refer to activity-assistants documentation (to
 5. Create a new Pull Request
 
 ## Related projects
-  - [activity-assistant](https://github.com/tcsvn/act_assist_logger) - The data aggregation platform
+  - [Activity Assistant](https://github.com/tcsvn/act_assist_logger) - Corresponding data collection platform.
   - [pyadlml](https://github.com/tcsvn/pyadlml) - A python library containing data exploration methods for ADL datasets.
   
 ## Support 

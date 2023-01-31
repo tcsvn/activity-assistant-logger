@@ -8,10 +8,8 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.sql.Time;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.TimeZone;
 
 import com.example.activity_assistant_logger.ActivityFileHandler;
@@ -148,7 +146,7 @@ public class ActAssistApi implements Serializable {
         mTimeZone = timeZone;
     }
 
-    public Smartphone getLocalSmartphone(){
+    public Smartphone localSmartphone(){
         return mSmartphone;
     }
 
@@ -166,13 +164,26 @@ public class ActAssistApi implements Serializable {
 
     public void updateLocalSmartphone(Smartphone sm){
         mSmartphone = sm;
+
+        // Overwrite remote values with current values
         mSmartphone.setName(mController.getDeviceName());
-        mSmartphone.setLogging(mController.getLogging());
-        mSmartphone.setLoggedActivity(mController.getLoggedActivity());
+        boolean isLogging = mController.getLogging();
+        mSmartphone.setLogging(isLogging);
+        if (isLogging) {
+            mSmartphone.setLoggedActivity(
+                    this.getActivityUrl(
+                           mController.getSelectedActivity(),
+                           this.activities
+                    ));
+        }
+        else{
+            mSmartphone.setLoggedActivity(null);
+        }
+
     }
 
     public String getActivityUrl(String currentActivity, List <Activity> acts){
-        String actUrl = "";
+        String actUrl = null;
         for (int i = 0; i < acts.size(); i++){
             if(acts.get(i).getName().equals(currentActivity)){
                 actUrl = createActivityUrl(acts.get(i));
@@ -188,6 +199,7 @@ public class ActAssistApi implements Serializable {
     }
 
     public void updateLocalActivities(List<Activity> activities){
+        this.activities = activities;
         this.activityNames = this.extractNames(activities);
     }
 
@@ -360,8 +372,8 @@ public class ActAssistApi implements Serializable {
         */
         ApiService apiService = retrofit.create(ApiService.class);
         mSmartphone.setLogging(mController.getLogging());
-        if (mController.getLoggedActivity() == null){
-            mSmartphone.setLoggedActivity("");
+        if (mController.getSelectedActivity() == null){
+            mSmartphone.setLoggedActivity(null);
         }
         return apiService.putSmartphone(mSmartphone.getId(), mSmartphone)
                 .subscribeOn(Schedulers.io())
@@ -386,7 +398,7 @@ public class ActAssistApi implements Serializable {
                 .observeOn(AndroidSchedulers.mainThread());
     }
 
-    public void getRemoteTimeZone(){
+    public void updateLocalTimeZoneFromRemote(){
         getRemoteServer().subscribe(
                 server -> {
                     String tz = server.getTimeZone();

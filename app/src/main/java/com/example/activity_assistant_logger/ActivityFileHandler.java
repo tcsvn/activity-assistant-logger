@@ -22,7 +22,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Calendar;
-import java.util.Locale;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.TimeZone;
@@ -35,7 +34,9 @@ import okhttp3.ResponseBody;
 public class ActivityFileHandler {
 
     final static private String ACTIVITY_FILE_NAME="activity.csv";
+    // TODO java can only format milliseconds. Change this to microseconds
     final static private String DATE_FORMAT="dd-MM-yyyy HH:mm:ss.SSS";
+    final static private String PLACEHOLDER = "###";
     final private SimpleDateFormat dataFormat;
     private boolean isFirstWrite;
 
@@ -66,7 +67,7 @@ public class ActivityFileHandler {
     public String getActivity(Context appContext, WeekViewEvent event) throws FileNotFoundException{
         String startTime  = cal2Str(event.getStartTime());
         String endTime  = cal2Str(event.getEndTime());
-        String activity = event.getName().toString();
+        String activity = event.getName();
         String line = startTime + "," + endTime + "," + activity;
 
         List<String[]> cur_file = new CSVFile(appContext.openFileInput(ACTIVITY_FILE_NAME)).read();
@@ -74,10 +75,10 @@ public class ActivityFileHandler {
         StringBuffer inputBuffer = new StringBuffer();
         for (int i = 0; i < cur_file.size() - 1; i++) {
             if (startTime.equals(cur_file.get(i)[0]) && endTime.equals(cur_file.get(i)[1]) && activity.equals(cur_file.get(i)[2])){
-                 StringJoiner joiner = new StringJoiner(",");
-                 String tmp = joiner.add(cur_file.get(i)[0])
-                        .add(cur_file.get(i)[1])
-                        .add(cur_file.get(i)[2]).toString();
+                 String tmp = new StringJoiner(",")
+                         .add(cur_file.get(i)[0])
+                         .add(cur_file.get(i)[1])
+                         .add(cur_file.get(i)[2]).toString();
                  return tmp;
             }
         }
@@ -87,7 +88,7 @@ public class ActivityFileHandler {
         List<String[]> cur_file = null;
         String startTime  = this.cal2Str(activity.getStartTime());
         String endTime  = this.cal2Str(activity.getEndTime());
-        String strActivity = activity.getName().toString();
+        String strActivity = activity.getName();
         try {
             cur_file = new CSVFile(appContext.openFileInput(ACTIVITY_FILE_NAME)).read();
         } catch (FileNotFoundException e){
@@ -115,19 +116,13 @@ public class ActivityFileHandler {
         StringBuffer inputBuffer = new StringBuffer();
 
         for (int i = 0; i < cur_file.size(); i++) {
-            StringJoiner joiner = new StringJoiner(",");
-            if (!startTime.equals(cur_file.get(i)[0]) || !endTime.equals(cur_file.get(i)[1]) || !activity.equals(cur_file.get(i)[2])){
-                String tmp = joiner.add(cur_file.get(i)[0])
-                            .add(cur_file.get(i)[1])
-                        .add(cur_file.get(i)[2]).toString();
-                    inputBuffer.append(tmp + "\n");
-                }
+            String [] row = cur_file.get(i);
+            if (!startTime.equals(row[0]) || !endTime.equals(row[1]) || !activity.equals(row[2])){
+                addLine2InputBuffer(inputBuffer, row);
             }
+        }
 
-
-        FileOutputStream os = appContext.openFileOutput(ACTIVITY_FILE_NAME, Context.MODE_PRIVATE);
-        os.write(inputBuffer.toString().getBytes());
-        os.close();
+        saveInputBuffer2ActivityFile(appContext, inputBuffer);
     }
 
     public void insertActivity(Context appContext, WeekViewEvent event) throws IOException {
@@ -140,6 +135,16 @@ public class ActivityFileHandler {
         insertActivity(appContext, cal2Str(startTime), cal2Str(endTime), activity);
     }
 
+   private void addLine2InputBuffer(StringBuffer inputBuffer, String startTime, String endTime, String activity){
+       StringJoiner joiner = new StringJoiner(",");
+        String tmp = joiner.add(startTime).add(endTime).add(activity).toString();
+        inputBuffer.append(tmp + "\n");
+   }
+   private void addLine2InputBuffer(StringBuffer inputBuffer, String[] row){
+        assert row.length == 3;
+        addLine2InputBuffer(inputBuffer, row[0], row[1], row[2]);
+   }
+
     public void insertActivity(Context appContext, String startTime, String endTime, String activity) throws IOException{
 
         List<String[]> cur_file = new CSVFile(appContext.openFileInput(ACTIVITY_FILE_NAME)).read();
@@ -148,38 +153,38 @@ public class ActivityFileHandler {
         try {
             st = ActivityFileHandler.str2Cal(startTime);
         } catch (ParseException e){};
+
+        // Add header to file
+        addLine2InputBuffer(inputBuffer, cur_file.get(0));
+
         boolean lineInserted = false;
-        for (int i = 0; i < cur_file.size(); i++) {
-            StringJoiner joiner = new StringJoiner(",");
-            String tmp = null;
-            // TODO
+        for (int i = 1; i < cur_file.size(); i++) {
+
             Calendar csv_st = null;
+            Calendar csv_et = null;
             boolean couldParseSt = true;
+            String [] row = cur_file.get(i);
+
             try {
-                csv_st = ActivityFileHandler.str2Cal(cur_file.get(i)[0]);
+                csv_st = ActivityFileHandler.str2Cal(row[0]);
+                csv_et = ActivityFileHandler.str2Cal(row[1]);
             }catch (ParseException e){couldParseSt = false;};
 
-            if (couldParseSt && st.compareTo(csv_st) < 0 && !lineInserted) {
-                tmp = joiner.add(startTime).add(endTime).add(activity).toString();
+            // If start time of to insert activity happens after the st & et of previous activity
+            if (!lineInserted && couldParseSt && st.compareTo(csv_st) < 0 && st.compareTo(csv_et) < 0) {
+                this.addLine2InputBuffer(inputBuffer, startTime, endTime, activity);
                 lineInserted = true;
             }
-            else{
-                tmp = joiner.add(cur_file.get(i)[0])
-                        .add(cur_file.get(i)[1])
-                        .add(cur_file.get(i)[2]).toString();
-            }
-            inputBuffer.append(tmp + "\n");
-        }
-        // Case where the date is later than the last recorded activity
-        if (!lineInserted){
-            StringJoiner joiner = new StringJoiner(",");
-            String tmp = joiner.add(startTime).add(endTime).add(activity).toString();
-            inputBuffer.append(tmp + "\n");
+            this.addLine2InputBuffer(inputBuffer, row);
         }
 
-        FileOutputStream os = appContext.openFileOutput(ACTIVITY_FILE_NAME, Context.MODE_PRIVATE);
-        os.write(inputBuffer.toString().getBytes());
-        os.close();
+        // Case where the date is later than the last recorded activity
+        if (!lineInserted){
+            this.addLine2InputBuffer(inputBuffer, startTime, endTime, activity);
+        }
+
+        saveInputBuffer2ActivityFile(appContext, inputBuffer);
+
     }
 
     public void overwriteActivity(Context appContext, WeekViewEvent oldActivity, WeekViewEvent newActivity) throws FileNotFoundException, IOException{
@@ -188,73 +193,58 @@ public class ActivityFileHandler {
          */
         String startTime  = this.cal2Str(oldActivity.getStartTime());
         String endTime  = this.cal2Str(oldActivity.getEndTime());
-        String strActivity = oldActivity.getName().toString();
+        String strActivity = oldActivity.getName();
 
         String newStartTime  = this.cal2Str(newActivity.getStartTime());
         String newEndTime  = this.cal2Str(newActivity.getEndTime());
-        String newStrActivity = newActivity.getName().toString();
-
-        final String new_row = newStartTime + "," + newEndTime + "," + newStrActivity;
+        String newStrActivity = newActivity.getName();
 
         List<String[]> cur_file = new CSVFile(appContext.openFileInput(ACTIVITY_FILE_NAME)).read();
         StringBuffer inputBuffer = new StringBuffer();
 
         for (int i = 0; i < cur_file.size(); i++) {
-            StringJoiner joiner = new StringJoiner(",");
-            String tmp = null;
-            if (startTime.equals(cur_file.get(i)[0]) && endTime.equals(cur_file.get(i)[1]) && strActivity.equals(cur_file.get(i)[2])){
-                 tmp = joiner.add(newStartTime).add(newEndTime).add(newStrActivity).toString();
+            String [] row = cur_file.get(i);
+
+            if (startTime.equals(row[0]) && endTime.equals(row[1]) && strActivity.equals(row[2])){
+                addLine2InputBuffer(inputBuffer, newStartTime, newEndTime, newStrActivity);
             }
             else{
-                tmp = joiner.add(cur_file.get(i)[0])
-                                   .add(cur_file.get(i)[1])
-                                   .add(cur_file.get(i)[2]).toString();
+                addLine2InputBuffer(inputBuffer, row[0], row[1], row[2]);
             }
-            inputBuffer.append(tmp + "\n");
         }
 
-        FileOutputStream os = appContext.openFileOutput(ACTIVITY_FILE_NAME, Context.MODE_PRIVATE);
-        os.write(inputBuffer.toString().getBytes());
-        os.close();
-
-
+        saveInputBuffer2ActivityFile(appContext, inputBuffer);
     }
 
-    public ArrayList<? extends WeekViewEvent> getActivitiesAsEvents(Context appcontext){
+    public ArrayList<? extends WeekViewEvent> getActivitiesAsEvents(Context appContext, List<String> activities){
         ArrayList<WeekViewEvent> events = new ArrayList<WeekViewEvent>();
-        String str = null;
+        List<String[]> cur_file;
+
         try {
-            str = this.getActivityFileAsString(appcontext);
+            cur_file = new CSVFile(appContext.openFileInput(ACTIVITY_FILE_NAME)).read();
         } catch (FileNotFoundException e) {
             return events;
         }
-        BufferedReader bufReader = new BufferedReader(new StringReader(str));
-        String line = null;
-        Boolean condition = false;
-        try {
-            bufReader.readLine(); // Skip csv header
-            condition = (line = bufReader.readLine()) != null;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        int [] colors = appcontext.getResources().getIntArray(R.array.categorical);
+
+        int [] colors = appContext.getResources().getIntArray(R.array.categorical);
         Map<String, String> map = new HashMap<String, String>();
 
-        while (condition) {
+        for (int i = 1; i < cur_file.size(); i++){
+            String [] row = cur_file.get(i);
 
-            String[] values = line.split(",");
-            // Filter out activities that are not yet finished
-            if (values.length != 3){
-                break;
+            // If there is an invalid or unfinished row skip sample
+            if (!this.isRowValid(row, true, (i == cur_file.size()-1), activities)){
+                continue;
             }
+
             Calendar startTime = null;
             Calendar endTime = null;
-            String activity = values[2];
-
+            String activity = row[2];
             try{
-                startTime = str2Cal(values[0]);
-                endTime = str2Cal(values[1]);
+                startTime = str2Cal(row[0]);
+                endTime = str2Cal(row[1]);
             } catch(ParseException e){}
+
             WeekViewEvent event = new WeekViewEvent(
                     startTime.getTimeInMillis(), activity, startTime, endTime);
 
@@ -263,11 +253,6 @@ public class ActivityFileHandler {
             }
             event.setColor(colors[Integer.parseInt(map.get(activity))]);
             events.add(event);
-            try{
-                condition = (line = bufReader.readLine()) != null;
-            } catch (IOException e){
-               e.printStackTrace();
-            }
         }
 
         return events;
@@ -278,36 +263,46 @@ public class ActivityFileHandler {
         return file.exists();
     }
 
-    public void cleanupActivityFile(Context appContext) throws IOException {
-        /* Loads activity file, removes invalid indices (columns not equal 3)
+    public void cleanupActivityFile(Context appContext, Boolean removePlaceHolder, List<String> activities) throws IOException {
+        cleanupActivityFile(appContext, ACTIVITY_FILE_NAME, removePlaceHolder, activities);
+    }
+
+    public boolean isRowValid(String [] row, boolean placeIsHolderInvalid, boolean isLastRow, List<String> activities){
+        boolean cond1 = (row.length == 3);
+        boolean cond2 = (activities.contains(row[2]));
+        boolean cond3 = (!row[1].equals(PLACEHOLDER) | (!placeIsHolderInvalid & isLastRow));
+        return cond1 & cond2 & cond3;
+    }
+
+    public void cleanupActivityFile(Context appContext, String outFileName, Boolean removePlaceHolder, List<String> activities) throws IOException {
+        /* Loads activity file, removes invalid indices (columns not equal 3) activities not in list
            and saves the file back to storage.
         * */
         try {
             List<String[]> cur_file = new CSVFile(appContext.openFileInput(ACTIVITY_FILE_NAME)).read();
-            String [] lastLine = cur_file.get(cur_file.size() - 1);
-            if (lastLine.length != 3 && cur_file.size() > 1){
+            if (cur_file.size() > 1){
                 // if last line wasn't finished than exclude last line
                 StringBuffer inputBuffer = new StringBuffer();
                 List<Integer> validIndices = new ArrayList<Integer>();
-                for (int i = 0; i < cur_file.size() - 1; i++) {
-                    if (cur_file.get(i).length == 3) {
+
+                // Add line for header
+                validIndices.add(0);
+
+                // Iterate through every activity row and check if the length is correct
+                // the activity is present or the placeholder is there when it should not be removed in the last row
+                for (int i = 1; i < cur_file.size(); i++) {
+                    String [] row = cur_file.get(i);
+                    if (this.isRowValid(row, removePlaceHolder, (i == cur_file.size()-1), activities)){
                         validIndices.add(i);
                     }
                 }
-                for (int i =0; i < validIndices.size(); i++){
-                    StringJoiner joiner = new StringJoiner(",");
-                    String tmp = joiner.add(cur_file.get(i)[0])
-                                       .add(cur_file.get(i)[1])
-                                       .add(cur_file.get(i)[2]).toString();
-                    // for the last line don't add a \n
-                    if (i < validIndices.size()-2) {
-                        inputBuffer.append(tmp + "\n");
-                    }
-                    else {
-                        inputBuffer.append(tmp + "\n");
-                    }
+
+                for (int i = 0; i < validIndices.size(); i++){
+                    String [] row = cur_file.get(validIndices.get(i));
+                    addLine2InputBuffer(inputBuffer, row);
                 }
-                FileOutputStream os = appContext.openFileOutput(ACTIVITY_FILE_NAME, Context.MODE_PRIVATE);
+
+                FileOutputStream os = appContext.openFileOutput(outFileName, Context.MODE_PRIVATE);
                 os.write(inputBuffer.toString().getBytes());
                 os.close();
             }
@@ -393,15 +388,24 @@ public class ActivityFileHandler {
         return appContext.deleteFile(ACTIVITY_FILE_NAME);
     }
 
-    public MultipartBody.Part getActivityMultipart(Context appContext){
+    public MultipartBody.Part getActivityMultipart(Context appContext, List<String> activities){
         /* creates a multi part file to put to the api
         * */
         MultipartBody.Part body = null;
         try{
-            File file = new File(appContext.getFilesDir(), ACTIVITY_FILE_NAME);
+            File file = null;
+            if (this.isLastActivityUnfinished(appContext)){
+                // Create new file without last activity if it is not finished yet
+                String uploadFileName = ACTIVITY_FILE_NAME + ".upload";
+                cleanupActivityFile(appContext, uploadFileName, true, activities);
+                file = new File(appContext.getFilesDir(), uploadFileName);
+            }
+            else{
+                file = new File(appContext.getFilesDir(), ACTIVITY_FILE_NAME);
+            }
             if (!isFirstWrite(appContext)){
                RequestBody requestFile =
-                       RequestBody.create(MediaType.parse("multipart/form-data"),file);
+                       RequestBody.create(MediaType.parse("multipart/form-data"), file);
                body = MultipartBody.Part.createFormData(
                        "activity_file", file.getName(), requestFile);
             }
@@ -413,53 +417,74 @@ public class ActivityFileHandler {
             }
         }catch (NullPointerException e){
             e.printStackTrace();
-        }
+        } catch (IOException e)
+        {
+            e.printStackTrace();
+        };
         return body;
     }
 
-    public void createActivity(Context appContext, String new_activity, TimeZone tz) throws IOException {
+    public void createNewActivity(Context appContext, String new_activity, TimeZone tz) throws IOException {
         FileOutputStream os = appContext.openFileOutput(ACTIVITY_FILE_NAME, Context.MODE_APPEND);
-        String row;
-        if (this.isFirstWrite){
-            row = getCurrentTimestamp(tz);
-            this.isFirstWrite = false;
-        }
-        else {
-            row = "\n" + getCurrentTimestamp(tz);
+        String row = getCurrentTimestamp(tz) + "," + this.PLACEHOLDER + "," + new_activity;
+        if (! this.isFirstWrite){
+            row = "\n" + row;
         }
         os.write(row.getBytes());
         os.close();
     }
 
-    public void addActivity(Context appContext, String old_activity, String new_activity, TimeZone tz) throws IOException {
+    public void addActivity(Context appContext, String new_activity, TimeZone tz) throws IOException {
         /** finishes a begun line and starts a new one
         * */
-        this.finishActivity(appContext, old_activity, tz);
-        this.createActivity(appContext, new_activity, tz);
+        this.finishLastActivity(appContext, tz);
+        this.createNewActivity(appContext, new_activity, tz);
     }
 
-    public void finishActivity(Context appContext, String activity, TimeZone tz) throws IOException {
+    public void finishLastActivity(Context appContext, TimeZone tz) throws IOException {
         /** finishes a begun line
          * */
         final String cur_ts = getCurrentTimestamp(tz);
         List<String[]> cur_file = new CSVFile(appContext.openFileInput(ACTIVITY_FILE_NAME)).read();
-        String old_ts = cur_file.get(cur_file.size() - 1)[0];
-        final String new_row = old_ts + "," + cur_ts + "," + activity;
 
+        String[] last_row = cur_file.get(cur_file.size() - 1);
+        assert this.PLACEHOLDER.equals(last_row[1]);
+        final String new_row = last_row[0] + "," + cur_ts + "," + last_row[2];
+
+        // Read file as input buffer without last row
         StringBuffer inputBuffer = new StringBuffer();
         for (int i = 0; i < cur_file.size() - 1; i++) {
-            StringJoiner joiner = new StringJoiner(",");
-            String tmp = joiner.add(cur_file.get(i)[0])
-                    .add(cur_file.get(i)[1])
-                    .add(cur_file.get(i)[2]).toString();
-            inputBuffer.append(tmp + "\n");
+            String [] row = cur_file.get(i);
+            addLine2InputBuffer(inputBuffer, row);
         }
+
+        // Add last row
         inputBuffer.append(new_row);
+
+        // Save file
+        saveInputBuffer2ActivityFile(appContext, inputBuffer);
+    }
+
+    private void saveInputBuffer2ActivityFile(Context appContext, StringBuffer inputBuffer) throws IOException{
         FileOutputStream os = appContext.openFileOutput(ACTIVITY_FILE_NAME, Context.MODE_PRIVATE);
         os.write(inputBuffer.toString().getBytes());
         os.close();
     }
 
+    public String getLastActivityName(Context appContext) throws IOException{
+        List<String[]> cur_file = new CSVFile(appContext.openFileInput(ACTIVITY_FILE_NAME)).read();
+        String[] last_row = cur_file.get(cur_file.size() - 1);
+        return last_row[2];
+    }
+
+    public boolean isLastActivityUnfinished(Context appContext) throws IOException{
+        /* Checks if there are unfinished activities in the file. Happens when an activity is logged
+           and the application is closed or suspended.
+         */
+        List<String[]> cur_file = new CSVFile(appContext.openFileInput(ACTIVITY_FILE_NAME)).read();
+        String[] last_row = cur_file.get(cur_file.size() - 1);
+        return this.PLACEHOLDER.equals(last_row[1]);
+    }
     private class CSVFile {
         InputStream inputStream;
 

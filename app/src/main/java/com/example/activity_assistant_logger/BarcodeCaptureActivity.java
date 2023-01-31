@@ -47,10 +47,6 @@ public class BarcodeCaptureActivity extends AppCompatActivity {
                     ActivityCompat.requestPermissions(BarcodeCaptureActivity.this,
                             new String[]{CAMERA},
                              PERMISSION_REQUEST_CODE);
-                    // TODO: Consider calling
-                    //    ActivityCompat#requestPermissions
-                    // here to request the missing permissions, and then overriding
-
                     return;
                 }
                 try {

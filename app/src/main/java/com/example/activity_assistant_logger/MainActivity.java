@@ -79,6 +79,7 @@ public class MainActivity extends AppCompatActivity{
         mFragmentManager.beginTransaction()
                         .add(R.id.container, mHomeFragment, "home")
                         .commit();
+
     }
 
     @Override
@@ -109,14 +110,10 @@ public class MainActivity extends AppCompatActivity{
     public void onNewIntent(Intent intent){
         /** Is called for every opening of the main activity
          *  is used for getting a notification
-         *  TODO only works if application was minimized and not completely removed
          */
-        createToast("DEBUG: Intent 1");
         super.onNewIntent(intent);
-        createToast("DEBUG: Intent 2");
         try{
             if (NotificationHandler.isStartedFromNotification(intent)) {
-                createToast("DEBUG: Intent 2");
                 controller.openedFromNotification(
                         intent.getStringExtra("currentActivity"));
             }
