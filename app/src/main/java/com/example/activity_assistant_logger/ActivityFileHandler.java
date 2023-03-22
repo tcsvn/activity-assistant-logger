@@ -35,7 +35,7 @@ public class ActivityFileHandler {
 
     final static private String ACTIVITY_FILE_NAME="activity.csv";
     // TODO java can only format milliseconds. Change this to microseconds
-    final static private String DATE_FORMAT="dd-MM-yyyy HH:mm:ss.SSS";
+    final static private String DATE_FORMAT="dd.MM.yyyy HH:mm:ss.SSS";
     final static private String PLACEHOLDER = "###";
     final private SimpleDateFormat dataFormat;
     private boolean isFirstWrite;
