@@ -271,6 +271,15 @@ public class WeekFragment extends Fragment implements MonthLoader.MonthChangeLis
         MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(appContext);
         View viewInflated = LayoutInflater.from(appContext).inflate(R.layout.edit_activity, null);
 
+        ArrayList<String> activities = (ArrayList<String>) controller.getActivities();
+        MySpinner spinner = (MySpinner) viewInflated.findViewById(R.id.spinner_edit_activity);
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this.getActivity(),
+                android.R.layout.simple_spinner_item, activities);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+        int pos = adapter.getPosition(event.getName());
+        spinner.programmaticallySetPosition(pos);
+
         EditText inputStarttime = (EditText) viewInflated.findViewById(R.id.start_time);
         EditText inputEndtime = (EditText) viewInflated.findViewById(R.id.end_time);
         TextView title = (TextView) viewInflated.findViewById(R.id.title_weekview_dialog);
@@ -279,7 +288,7 @@ public class WeekFragment extends Fragment implements MonthLoader.MonthChangeLis
         String tmp1 = ActivityFileHandler.cal2Str(event.getStartTime());
         inputStarttime.setText(tmp1);
         inputEndtime.setText(ActivityFileHandler.cal2Str(event.getEndTime()));
-        title.setText("Edit :" + event.getName());
+        title.setText("Edit");// :" + event.getName());
 
 
 
@@ -302,7 +311,7 @@ public class WeekFragment extends Fragment implements MonthLoader.MonthChangeLis
                             Toast.makeText(appContext, "Start time can not be after End time...", Toast.LENGTH_SHORT).show();
                             return;
                         }
-                        WeekViewEvent newEvent = new WeekViewEvent(st.getTimeInMillis(), event.getName(), st, et);
+                        WeekViewEvent newEvent = new WeekViewEvent(st.getTimeInMillis(), spinner.getSelectedItem().toString(), st, et);
                         try {
                             activityFile.overwriteActivity(appContext, event, newEvent);
                         }catch (FileNotFoundException  e){
